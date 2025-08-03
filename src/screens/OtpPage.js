@@ -1,4 +1,6 @@
 import React, { useRef } from 'react';
+import axios from 'axios';
+import { BASE_URL, AUTH_USERNAME, AUTH_PASSWORD } from '../config/config';
 import {
   StyleSheet,
   Text,
@@ -9,17 +11,92 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+
 } from 'react-native';
 import { ms, s, vs } from 'react-native-size-matters';
 import { useNavigation } from '@react-navigation/native';
-// import illustration from local assets, update the path as needed
+import { useSelector, useDispatch } from 'react-redux';
+import { userdata, setUserData } from '../redux/slice/userDataSlice';
+import { Alert } from 'react-native';
 const illustration = require('../assets/otp_illustration.png');
 
 const OtpPage = () => {
   const navigation = useNavigation();
+  const mobile = useSelector(state => state.ic.mobile);
   const otpInputs = Array(6).fill('');
   const [otp, setOtp] = React.useState(Array(6).fill(''));
   const inputRefs = useRef([]);
+   const icData = useSelector(state => state.ic.data);
+  const dispatch = useDispatch();
+  const [timeLeft, setTimeLeft] = React.useState(90);
+
+  React.useEffect(() => {
+    if (timeLeft === 0) return;
+    const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [timeLeft]);
+
+  const handleOTP = async () => {
+    try {
+      const response = await axios.post(
+        `${BASE_URL}/api/login`,
+        {
+          ic_number: icData?.ic_number,
+          mobile: icData?.mobile,
+        },
+        {
+          auth: {
+            username: AUTH_USERNAME,
+            password: AUTH_PASSWORD,
+          },
+        },
+      );
+      console.log('OTP response:', response.data);
+      if (response.data.status === true) {
+        Alert.alert('Success', 'OTP sent successfully');
+      } else {
+         Alert.alert('invalid');
+      }
+    } catch (error) {
+     console.log('OTP request error:', error);
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const otpCode = otp.join('');
+      console.log(otpCode);
+      const response = await axios.post(
+        `${BASE_URL}/api/otp_verify`,
+        {
+          mobile: mobile,
+          otp: otpCode,
+        },
+        {
+          auth: {
+            username: AUTH_USERNAME,
+            password: AUTH_PASSWORD,
+          },
+        },
+      );
+      console.log('OTP verification response:', response.data);
+      dispatch(setUserData(response.data.data));
+      if (response.data.status === true) {
+        Alert.alert('Success', 'OTP verified', [
+          {
+            text: 'OK',
+            onPress: () => navigation.navigate('Onboarding'),
+          },
+        ]);
+      }
+      if (response.data.otp) {
+        setOtp(response.data.otp.split(''));
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'OTP verification failed');
+    }
+  };
 
   const handleOtpChange = (text, index) => {
     if (/^\d*$/.test(text)) {
@@ -38,6 +115,30 @@ const OtpPage = () => {
   const handleBackspace = (e, index) => {
     if (e.nativeEvent.key === 'Backspace' && otp[index] === '' && index > 0) {
       inputRefs.current[index - 1].focus();
+    }
+  };
+
+  // Example electionList function updated as per instructions
+  const electionList = async () => {
+    try {
+      const otpResponse = useSelector(state => state.userData.otpVerificationResponse);
+      const response = await axios.post(
+        `${BASE_URL}/api/election_list`,
+        {
+          id: otpResponse?.id,
+          region_id: otpResponse?.region_id,
+        },
+        {
+          auth: {
+            username: AUTH_USERNAME,
+            password: AUTH_PASSWORD,
+          },
+        },
+      );
+      console.log('Election list response:', response.data);
+      // Handle response as needed
+    } catch (error) {
+      console.error('Error fetching election list:', error);
     }
   };
 
@@ -74,9 +175,7 @@ const OtpPage = () => {
         <Text style={styles.title}>OTP VERIFICATION</Text>
 
         {/* Subtitle */}
-        <Text style={styles.subtitle}>
-          Enter the OTP sent to - +91-8976500001
-        </Text>
+        <Text style={styles.subtitle}>Enter the OTP sent to +60-{mobile}</Text>
 
         {/* OTP Inputs */}
         <View style={styles.otpRow}>
@@ -98,13 +197,16 @@ const OtpPage = () => {
         </View>
 
         {/* Timer */}
-        <Text style={styles.timer}>00:120 Sec</Text>
+        <Text style={styles.timer}>{`00:${timeLeft.toString().padStart(2, '0')} Sec`}</Text>
 
         {/* Resend */}
         <View style={styles.resendRow}>
           <Text style={styles.resendText}>Don’t receive code ? </Text>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.resendLink}>Re-send</Text>
+          <TouchableOpacity
+            onPress={handleOTP}
+            disabled={timeLeft > 0}
+          >
+            <Text style={[styles.resendLink, { color: timeLeft > 0 ? '#999' : '#6A00BF' }]}>Re-send</Text>
           </TouchableOpacity>
         </View>
 
@@ -112,10 +214,7 @@ const OtpPage = () => {
         <View style={{ flex: 1 }} />
 
         {/* Submit Button */}
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => navigation.navigate('Onboarding')}
-        >
+        <TouchableOpacity style={styles.button} onPress={handleSubmit}>
           <Text style={styles.buttonText}>Submit</Text>
         </TouchableOpacity>
       </ScrollView>

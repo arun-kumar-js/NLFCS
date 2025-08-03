@@ -1,0 +1,503 @@
+import React, { useEffect, useState, useRef } from 'react';
+import {
+  View,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  Alert,
+  Platform,
+  Image,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Camera, useCameraDevices } from 'react-native-vision-camera';
+import {
+  checkAndRequestCameraPermission,
+  checkCameraPermission,
+} from '../permission/CameraPermissionHandler';
+import {
+  extractNumbersFromImage,
+  formatExtractedNumbers,
+  testMLKitIntegration,
+} from '../utils/ocrHelperRN';
+
+const CameraScreen = () => {
+  const [hasPermission, setHasPermission] = useState(false);
+  const [isActive, setIsActive] = useState(true);
+  const [capturedImage, setCapturedImage] = useState(null);
+  const [extractedNumbers, setExtractedNumbers] = useState([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const devices = useCameraDevices();
+  const device =
+    devices.back ||
+    (devices && Object.values(devices).find(d => d && d.position === 'back'));
+  const cameraRef = useRef(null);
+
+  console.log('Camera devices:', devices);
+  console.log('Back device:', device);
+  console.log('Has permission:', hasPermission);
+  console.log(
+    'Available device positions:',
+    devices
+      ? Object.keys(devices).map(key => ({
+          key,
+          position: devices[key]?.position,
+        }))
+      : 'No devices',
+  );
+
+  useEffect(() => {
+    const checkPermissions = async () => {
+      try {
+        // First, just check if permission is already granted
+        const granted = await checkCameraPermission();
+        console.log('Initial camera permission check:', granted);
+        setHasPermission(granted);
+
+        // Test ML Kit integration
+        const mlKitAvailable = await testMLKitIntegration();
+        console.log('ML Kit integration test result:', mlKitAvailable);
+      } catch (error) {
+        console.error('Error checking camera permissions:', error);
+        setHasPermission(false);
+      }
+    };
+    checkPermissions();
+  }, []);
+
+  // Debug device detection
+  useEffect(() => {
+    if (devices && Object.keys(devices).length > 0) {
+      console.log('Devices detected:', Object.keys(devices));
+      console.log('Device details:', devices);
+    }
+  }, [devices]);
+
+  const takePhoto = async () => {
+    try {
+      if (cameraRef.current) {
+        setIsProcessing(true);
+        const photo = await cameraRef.current.takePhoto({
+          qualityPrioritization: 'quality',
+          flash: 'off',
+        });
+        console.log('Photo taken:', photo.path);
+        setCapturedImage(photo.path);
+
+        // Process the image to extract numbers
+        await processImageForNumbers(photo.path);
+
+        // Alert.alert('Success', 'Photo captured and processed successfully!');
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const processImageForNumbers = async imagePath => {
+    try {
+      console.log('Starting image processing for IC number extraction...');
+      console.log('Image path:', imagePath);
+
+      // Use OCR helper to extract numbers from image
+      const result = await extractNumbersFromImage(imagePath);
+
+      console.log('OCR processing result:', result);
+
+      if (result.success) {
+        const formattedNumbers = formatExtractedNumbers(result.numbers);
+        setExtractedNumbers(formattedNumbers);
+        console.log('IC Number extracted successfully:', formattedNumbers);
+        console.log('Confidence:', result.confidence);
+        console.log('Message:', result.message);
+
+        // Show success alert
+        Alert.alert(
+          'Success',
+          `IC Number extracted: ${formattedNumbers[0] || 'Not found'}`,
+        );
+      } else {
+        console.log('OCR failed:', result.message);
+        setExtractedNumbers([]);
+        Alert.alert('Error', result.message);
+      }
+    } catch (error) {
+      console.error('Error processing image for IC number:', error);
+      setExtractedNumbers([]);
+      Alert.alert('Error', 'Failed to process image. Please try again.');
+    }
+  };
+
+  const toggleCamera = () => {
+    setIsActive(!isActive);
+  };
+
+  const retakePhoto = () => {
+    setCapturedImage(null);
+    setExtractedNumbers([]);
+  };
+
+  const getNumberLabel = (index, number) => {
+    const labels = [
+      'ID Number',
+      'Date of Birth',
+      'Issue Year',
+      'Expiry Year',
+      'PIN Code',
+      'Serial Number',
+      'Document Number',
+      'Reference Number',
+    ];
+    return labels[index] || `Number ${index + 1}`;
+  };
+
+  const requestPermission = async () => {
+    try {
+      const granted = await checkAndRequestCameraPermission();
+      console.log('Camera permission granted:', granted);
+      setHasPermission(granted);
+    } catch (error) {
+      console.error('Error requesting permission:', error);
+      setHasPermission(false);
+    }
+  };
+
+  const refreshPermission = async () => {
+    try {
+      const granted = await checkCameraPermission();
+      console.log('Refreshed camera permission status:', granted);
+      setHasPermission(granted);
+    } catch (error) {
+      console.error('Error refreshing permission:', error);
+      setHasPermission(false);
+    }
+  };
+
+  const retryCamera = () => {
+    setHasPermission(false);
+    setTimeout(() => {
+      requestPermission();
+    }, 100);
+  };
+
+  if (!hasPermission) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.permissionContainer}>
+          <Text style={styles.text}>
+            Camera permission is required to use this feature.
+          </Text>
+          <TouchableOpacity style={styles.button} onPress={requestPermission}>
+            <Text style={styles.buttonText}>Grant Permission</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, { marginTop: 10, backgroundColor: '#666' }]}
+            onPress={refreshPermission}
+          >
+            <Text style={styles.buttonText}>Refresh Permission</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!device) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.permissionContainer}>
+          <Text style={styles.text}>
+            {hasPermission
+              ? 'No camera device found. Please check your device.'
+              : 'Loading camera...'}
+          </Text>
+          {hasPermission && devices && (
+            <>
+              <Text style={styles.subText}>
+                Available devices: {Object.keys(devices).join(', ')}
+              </Text>
+              <Text style={styles.subText}>
+                Device details:{' '}
+                {JSON.stringify(
+                  Object.keys(devices).map(key => ({
+                    key,
+                    position: devices[key]?.position,
+                    name: devices[key]?.name,
+                  })),
+                )}
+              </Text>
+              <TouchableOpacity style={styles.button} onPress={retryCamera}>
+                <Text style={styles.buttonText}>Retry Camera</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {capturedImage ? (
+        // Show captured image and extracted numbers
+        <View style={styles.imageContainer}>
+          <Image
+            source={{ uri: `file://${capturedImage}` }}
+            style={styles.capturedImage}
+          />
+
+          <View style={styles.resultsContainer}>
+            <Text style={styles.resultsTitle}>IC Number Extracted:</Text>
+            {extractedNumbers.length > 0 ? (
+              <View style={styles.icNumberContainer}>
+                <Text style={styles.icNumberLabel}>12-Digit IC Number:</Text>
+                <Text style={styles.icNumberText}>
+                  {extractedNumbers[0]
+                    .toString()
+                    .replace(/(\d{6})(\d{2})(\d{4})/, '$1-$2-$3')}
+                </Text>
+                <Text style={styles.icNumberRaw}>
+                  Raw: {extractedNumbers[0]}
+                </Text>
+              </View>
+            ) : (
+              <Text style={styles.noNumbersText}>
+                No IC number found in ID card
+              </Text>
+            )}
+          </View>
+
+          <View style={styles.imageControls}>
+            <TouchableOpacity style={styles.retakeButton} onPress={retakePhoto}>
+              <Text style={styles.retakeButtonText}>Retake Photo</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        // Show camera view
+        <>
+          <Camera
+            ref={cameraRef}
+            style={StyleSheet.absoluteFill}
+            device={device}
+            isActive={isActive}
+            photo={true}
+          />
+
+          {/* Camera Controls */}
+          <View style={styles.controls}>
+            <TouchableOpacity
+              style={[
+                styles.captureButton,
+                isProcessing && styles.disabledButton,
+              ]}
+              onPress={takePhoto}
+              disabled={isProcessing}
+            >
+              <View style={styles.captureButtonInner} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.toggleButton}
+              onPress={toggleCamera}
+            >
+              <Text style={styles.toggleButtonText}>
+                {isActive ? 'Pause' : 'Resume'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {isProcessing && (
+            <View style={styles.processingOverlay}>
+              <Text style={styles.processingText}>Processing image...</Text>
+            </View>
+          )}
+        </>
+      )}
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  permissionContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  text: {
+    fontSize: 16,
+    textAlign: 'center',
+    color: '#fff',
+    marginBottom: 20,
+  },
+  subText: {
+    fontSize: 14,
+    textAlign: 'center',
+    color: '#ccc',
+    marginTop: 10,
+  },
+  button: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  controls: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 80 : 50,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  captureButton: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#fff',
+  },
+  captureButtonInner: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#fff',
+  },
+  toggleButton: {
+    position: 'absolute',
+    right: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  toggleButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  imageContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  capturedImage: {
+    width: '100%',
+    height: '60%',
+    resizeMode: 'contain',
+  },
+  resultsContainer: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#fff',
+  },
+  resultsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#000',
+  },
+  numbersContainer: {
+    gap: 12,
+  },
+  numberItem: {
+    backgroundColor: '#f8f9fa',
+    padding: 12,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#007AFF',
+  },
+  numberLabel: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  icNumberContainer: {
+    backgroundColor: '#f8f9fa',
+    padding: 20,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#007AFF',
+    alignItems: 'center',
+  },
+  icNumberLabel: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  icNumberText: {
+    fontSize: 24,
+    color: '#007AFF',
+    fontWeight: 'bold',
+    letterSpacing: 2,
+    marginBottom: 8,
+  },
+  icNumberRaw: {
+    fontSize: 12,
+    color: '#999',
+    fontFamily: 'monospace',
+  },
+  numberText: {
+    fontSize: 18,
+    color: '#000',
+    fontWeight: 'bold',
+  },
+  noNumbersText: {
+    fontSize: 16,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  imageControls: {
+    padding: 20,
+    backgroundColor: '#fff',
+  },
+  retakeButton: {
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  retakeButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  processingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  processingText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+});
+
+export default CameraScreen;

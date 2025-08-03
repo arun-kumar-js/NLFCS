@@ -1,3 +1,5 @@
+import axios from 'axios';
+import { BASE_URL, AUTH_USERNAME, AUTH_PASSWORD } from '../config/config';
 import React, { useState } from 'react';
 import {
   Text,
@@ -6,17 +8,44 @@ import {
   TouchableOpacity,
   Image,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { s, vs, ms } from 'react-native-size-matters';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useDispatch } from 'react-redux';
+import { setIcData } from '../redux/slice/IcSlice';
 
 const Login = () => {
   const navigation = useNavigation();
+  const dispatch = useDispatch();
   const [icNumber, setIcNumber] = useState('');
 
-  const handleNext = () => {
-    navigation.navigate('MobileNumVerify');
+  const handleNext = async () => {
+    try {
+      const response = await axios.post(
+        `${BASE_URL}/api/ic_verify`,
+        {
+          ic_number: icNumber,
+        },
+        {
+          auth: {
+            username: AUTH_USERNAME,
+            password: AUTH_PASSWORD,
+          },
+        },
+      );
+      console.log('API Response:', response.data);
+      if (response.data.status === true) {
+        dispatch(setIcData({ ...response.data, ic_number: icNumber }));
+        navigation.navigate('MobileNumVerify');
+      } else {
+        Alert.alert('Verification Failed', 'Invalid IC number or not found.');
+      }
+      
+    } catch (error) {
+      Alert.alert('API Error:', error);
+    }
   };
 
   return (
@@ -33,7 +62,20 @@ const Login = () => {
         placeholder="Enter your IC number here"
         placeholderTextColor="#aaa"
         value={icNumber}
-        onChangeText={setIcNumber}
+        keyboardType="numeric"
+        maxLength={14}
+        onChangeText={(text) => {
+          
+          const numeric = text.replace(/\D/g, '');
+          let formatted = numeric;
+          if (numeric.length > 6) {
+            formatted = `${numeric.slice(0, 6)}-${numeric.slice(6, 8)}`;
+          }
+          if (numeric.length > 8) {
+            formatted = `${numeric.slice(0, 6)}-${numeric.slice(6, 8)}-${numeric.slice(8, 12)}`;
+          }
+          setIcNumber(formatted);
+        }}
         style={styles.input}
       />
 

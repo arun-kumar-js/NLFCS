@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useSelector } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { ms, s, vs } from 'react-native-size-matters';
 import {
@@ -9,15 +10,59 @@ import {
   StyleSheet,
   Image,
   SafeAreaView,
-  Pressable,
+  Pressable,Alert
 } from 'react-native';
-
+import { BASE_URL, AUTH_USERNAME, AUTH_PASSWORD } from '../config/config';
+import axios from "axios"
 const MobileNumVerify = () => {
   const navigation = useNavigation();
+  const icData = useSelector(state => state.ic.data);
+  const [num,setNum]=useState()
+  console.log('IC Slice Data:', icData);
+
+const handleOTP = async () => {
+  try {
+    const response = await axios.post(
+      `${BASE_URL}/api/login`,
+      {
+        ic_number: icData?.ic_number,
+        mobile: icData?.mobile,
+      },
+      {
+        auth: {
+          username: AUTH_USERNAME,
+          password: AUTH_PASSWORD,
+        },
+      },
+    );
+    console.log('OTP response:', response.data);
+    if (response.data?.status === true) {
+      Alert.alert('Success', 'OTP sent successfully');
+      navigation.navigate('OtpPage');
+    } else {
+      Alert.alert('Error', response.data?.message || 'Failed to send OTP');
+    }
+  } catch (error) {
+    console.error('OTP request error:', error);
+  }
+}
+
+
+
+
+
+
+
+
+
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Back Arrow */}
-      <TouchableOpacity style={styles.backArrow} onPress={() => navigation.goBack()}>
+      <TouchableOpacity
+        style={styles.backArrow}
+        onPress={() => navigation.goBack()}
+      >
         <Image
           source={require('../assets/images/backarrow.png')}
           style={styles.backIcon}
@@ -27,7 +72,7 @@ const MobileNumVerify = () => {
 
       {/* Illustration */}
       <Image
-        source={require('../assets/images/num.png')} // Replace with your image path
+        source={require('../assets/images/num.png')}
         style={styles.image}
         resizeMode="contain"
       />
@@ -45,24 +90,37 @@ const MobileNumVerify = () => {
         {/* Phone Input */}
         <View style={styles.inputWrapper}>
           <Text style={styles.prefix}>+60</Text>
-          <TextInput
-            placeholder="Enter your phonenumber"
-            placeholderTextColor="#B0B0B0"
-            keyboardType="phone-pad"
-            style={styles.input}
-          />
+          {icData?.mobile ? (
+            <TextInput
+              value={icData.mobile}
+              style={styles.input}
+              editable={false}
+            />
+          ) : (
+            <TextInput
+              placeholder="Enter your phonenumber"
+              placeholderTextColor="#B0B0B0"
+              keyboardType="number-pad"
+              inputMode="numeric"
+              maxLength={10}
+              style={styles.input}
+              value={num || ''}
+              onChangeText={text => setNum(text)}
+              editable={true}
+            />
+          )}
         </View>
 
         {/* Forgot Number */}
-        <Pressable style={styles.forgotContainer} onPress={() => navigation.goBack()}>
+        <Pressable
+          style={styles.forgotContainer}
+          onPress={() => navigation.goBack()}
+        >
           <Text style={styles.forgotText}>Forgot number</Text>
         </Pressable>
 
         {/* Get OTP Button */}
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => navigation.navigate('OtpPage')}
-        >
+        <TouchableOpacity style={styles.button} onPress={handleOTP}>
           <Text style={styles.buttonText}>Get OTP</Text>
         </TouchableOpacity>
       </View>

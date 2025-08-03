@@ -1,12 +1,102 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
-import { requestFormReset } from 'react-dom';
-import { StyleSheet, Text, View, Image, TouchableOpacity, ScrollView } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
+import { setElectionList } from '../redux/slice/ElectionListSlice';
+import {
+  StyleSheet,
+  Text,
+  View,
+  Image,
+  TouchableOpacity,
+  ScrollView,
+} from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { s, vs, ms } from 'react-native-size-matters';
-
+import { BASE_URL, AUTH_USERNAME, AUTH_PASSWORD } from '../config/config';
 const Home = () => {
   const navigation = useNavigation();
+  const dispatch = useDispatch();
+  const [electionData, setElectionData] = useState();
+  const [candidateList, setCandidateList] = useState([]);
+  const [chartData, setChartData] = useState([]);
+  const otpResponse = useSelector(
+    state => state.userData?.otpVerificationResponse,
+  );
+  const electionListResult = useSelector(
+    state => state?.electionList?.data || [],
+  );
+  console.log(electionListResult);
+  const voteStatus = electionListResult?.[0]?.vote_status;
+
+  useEffect(() => {
+    if (otpResponse?.[0]?.id && otpResponse?.[0]?.region_id) {
+      electionList();
+      generateChartData();
+    }
+  }, [otpResponse]);
+
+  const electionList = async () => {
+    try {
+      const response = await axios.post(
+        `${BASE_URL}/api/election_list`,
+        {
+          member_id: otpResponse?.[0]?.id,
+          region_id: otpResponse?.[0]?.region_id,
+        },
+        {
+          auth: {
+            username: AUTH_USERNAME,
+            password: AUTH_PASSWORD,
+          },
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+      console.log('Election List :', response.data);
+
+      setElectionData(response.data.data);
+      dispatch(setElectionList(response.data.data));
+      setCandidateList(response.data?.data?.[0]?.canditates || []);
+      await generateChartData(response.data?.data?.[0]?.id);
+    } catch (error) {
+      console.error('Error fetching election list:', error);
+    }
+  };
+
+  const generateChartData = async electionId => {
+    try {
+      const response = await axios.post(
+        `${BASE_URL}/api/voting_graph`,
+        {
+          member_id: otpResponse?.[0]?.id,
+          region_id: otpResponse?.[0]?.region_id,
+        },
+        {
+          auth: {
+            username: AUTH_USERNAME,
+            password: AUTH_PASSWORD,
+          },
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+      const rawTimeSlots = response.data?.data?.[0]?.timeSlots || [];
+      // Take only first 15 data points
+      const limitedTimeSlots = rawTimeSlots.slice(0, 15);
+      const chartPoints = limitedTimeSlots.map(slot => ({
+        time: slot.time,
+        votes: slot.votes,
+      }));
+      setChartData(chartPoints);
+    } catch (error) {
+      console.error('Error fetching chart data:', error);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -14,12 +104,15 @@ const Home = () => {
         <View style={styles.header}>
           <View style={styles.profileBox}>
             <Image
-              source={require('../assets/images/profile.png')}
+              source={{
+                uri: `${electionData?.[0]?.image_path}1753084380_e294e4eb588cc34acea2.png`,
+              }}
               style={styles.avatar}
             />
             <View>
-              <Text style={styles.name}>Kate Russell</Text>
-              <Text style={styles.role}>Project Manager</Text>
+              <Text style={styles.name}>
+                {otpResponse?.[0]?.name || 'User'}
+              </Text>
             </View>
           </View>
           <View style={styles.notification}>
@@ -32,7 +125,6 @@ const Home = () => {
             </View>
           </View>
         </View>
-
         {/* Toggle */}
         <View style={styles.toggleRow}>
           <TouchableOpacity style={styles.onGoingBtn}>
@@ -42,58 +134,237 @@ const Home = () => {
             <Text style={styles.viewText}>View Results</Text>
           </TouchableOpacity>
         </View>
-
         {/* Election Info */}
         <Text style={styles.title}>Koperasi NLFCS Berhad</Text>
         <Text style={styles.subtitle}>Reginal Gendral Meeting</Text>
-
-        <View style={styles.card}>
+        <LinearGradient
+          colors={['#7555CE', '#8C9CF7']}
+          style={styles.card}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
           <View style={styles.candidatesRow}>
-            {[...Array(4)].map((_, i) => (
-              <Image
-                key={i}
-                source={require('../assets/images/profile.png')}
-                style={[styles.candidate, { marginLeft: i === 0 ? 0 : s(-10) }]}
-              />
+            {candidateList?.slice(0, 4).map((candidate, i) => (
+              <View key={candidate.id}>
+                <Image
+                  source={{
+                    uri: `${electionData?.[0]?.image_path}${candidate.image}`,
+                  }}
+                  style={[
+                    styles.candidate,
+                    { marginLeft: i === 0 ? 0 : s(-10) },
+                  ]}
+                />
+              </View>
             ))}
-            <View style={styles.moreBox}>
-              <Text style={styles.moreText}>+5 more</Text>
-            </View>
+            {candidateList.length > 4 && (
+              <View style={styles.moreBox}>
+                <Text style={styles.moreText}>
+                  +{candidateList.length - 4} more
+                </Text>
+              </View>
+            )}
           </View>
           <Text style={styles.label}>Candidates</Text>
           <Text style={styles.date}>
-            Election starts at 2, Jan 2025 8.00AM (MYT)
+            Election starts at{' '}
+            {new Date(electionData?.[0]?.start_date).toLocaleString('en-MY', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true,
+              timeZone: 'Asia/Kuala_Lumpur',
+            })}{' '}
+            (MYT)
           </Text>
           <Text style={styles.selection}>Committee Members Selection</Text>
-          <Text style={styles.region}>Perak Region</Text>
-          <Text style={styles.label}>Voting ends in</Text>
-          <View style={{ flexDirection: 'row', paddingTop: 10 }}>
+          <Text style={styles.region}>
+            {electionData?.[0]?.region_name || 'Region'}
+          </Text>
+          <Text style={styles.label}>Voting ends at</Text>
+          <View
+            style={{ flexDirection: 'row', paddingTop: 10, paddingLeft: 10 }}
+          >
             <View style={styles.timerBox}>
               <Text style={[styles.timerText, { fontSize: 11, height: 20 }]}>
-                🕒 2 hours 40 minutes 2 Seconds
+                🕒{' '}
+                {(() => {
+                  const end = new Date(electionData?.[0]?.end_date);
+                  const now = new Date();
+                  const diffMs = end - now;
+                  if (diffMs <= 0) return 'Voting ended';
+                  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+                  const minutes = Math.floor(
+                    (diffMs % (1000 * 60 * 60)) / (1000 * 60),
+                  );
+                  const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+                  return `${hours} hours ${minutes} minutes ${seconds} seconds`;
+                })()}
               </Text>
             </View>
-            <TouchableOpacity
-              style={[styles.voteBtn, { fontSize: 10, width: 70 }]}
-              onPress={() => navigation.navigate('CandidateList')}
-            >
-              <Text style={styles.voteText}>Let’s Vote</Text>
-            </TouchableOpacity>
+            {voteStatus === 'voted' ? (
+              <View style={[styles.voteBtn, { fontSize: 10, width: 70 }]}>
+                <Text style={styles.voteText}>Voted</Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[styles.voteBtn, { fontSize: 10, width: 70 }]}
+                onPress={() => navigation.navigate('CandidateList')}
+              >
+                <Text style={styles.voteText}>Let’s Vote</Text>
+              </TouchableOpacity>
+            )}
           </View>
-        </View>
+        </LinearGradient>
+        {chartData.length > 0 && (
+          <View
+            style={{
+              height: 300,
+              padding: 16,
+              backgroundColor: '#f8f9fa',
+              borderRadius: 12,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: 'bold',
+                marginBottom: 15,
+                textAlign: 'center',
+              }}
+            >
+              Voting Progress
+            </Text>
 
-        {/* Static Chart Placeholder */}
-        <View style={styles.chart}>
-          <Image
-            source={require('../assets/images/chart.png')}
-            style={styles.chartImage}
-            resizeMode="contain"
-          />
-          <Image
-            source={require('../assets/images/register.png')}
-            style={styles.registerImage}
-          />
-        </View>
+            {/* Chart Container */}
+            <View style={{ flexDirection: 'row', height: 200 }}>
+              {/* Y-Axis */}
+              <View
+                style={{
+                  width: 60,
+                  justifyContent: 'space-between',
+                  paddingRight: 10,
+                }}
+              >
+                <Text
+                  style={{ fontSize: 11, color: '#666', textAlign: 'right' }}
+                >
+                  {Math.max(...chartData.map(d => d.votes))}
+                </Text>
+                <Text
+                  style={{ fontSize: 11, color: '#666', textAlign: 'right' }}
+                >
+                  {Math.round(Math.max(...chartData.map(d => d.votes)) * 0.75)}
+                </Text>
+                <Text
+                  style={{ fontSize: 11, color: '#666', textAlign: 'right' }}
+                >
+                  {Math.round(Math.max(...chartData.map(d => d.votes)) * 0.5)}
+                </Text>
+                <Text
+                  style={{ fontSize: 11, color: '#666', textAlign: 'right' }}
+                >
+                  {Math.round(Math.max(...chartData.map(d => d.votes)) * 0.25)}
+                </Text>
+                <Text
+                  style={{ fontSize: 11, color: '#666', textAlign: 'right' }}
+                >
+                  0
+                </Text>
+              </View>
+
+              {/* Chart Bars */}
+              <View
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'flex-end',
+                  height: 200,
+                }}
+              >
+                {chartData.map((item, index) => {
+                  const maxVotes = Math.max(...chartData.map(d => d.votes));
+                  const barHeight =
+                    maxVotes > 0 ? (item.votes / maxVotes) * 160 : 0;
+
+                  // Format time from the API data
+                  let timeLabel = '';
+                  if (item.time) {
+                    // If time is in format like "08:00" or "8:00"
+                    const timeParts = item.time.split(':');
+                    const hour = parseInt(timeParts[0]);
+                    const minute = parseInt(timeParts[1]);
+                    timeLabel = `${hour}:${minute.toString().padStart(2, '0')}`;
+                  } else {
+                    // Fallback to calculated time slots
+                    const hour = 8 + index;
+                    timeLabel = `${hour}:00`;
+                  }
+
+                  return (
+                    <View
+                      key={index}
+                      style={{
+                        flex: 1,
+                        alignItems: 'center',
+                        marginHorizontal: 1,
+                      }}
+                    >
+                      {/* Bar */}
+                      <View
+                        style={{
+                          width: 16,
+                          height: barHeight,
+                          backgroundColor: '#7555CE',
+                          borderRadius: 3,
+                          marginBottom: 8,
+                          shadowColor: '#000',
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.1,
+                          shadowRadius: 3,
+                          elevation: 3,
+                        }}
+                      />
+
+                      {/* Vote count on bar */}
+                      <Text
+                        style={{
+                          fontSize: 9,
+                          color: '#666',
+                          fontWeight: '500',
+                        }}
+                      >
+                        {item.votes}
+                      </Text>
+
+                      {/* Time label */}
+                      <Text
+                        style={{ fontSize: 8, color: '#999', marginTop: 2 }}
+                      >
+                        {timeLabel}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Legend */}
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                marginTop: 15,
+                paddingHorizontal: 10,
+              }}
+            >
+              <Text style={{ fontSize: 12, color: '#666' }}>Time (Hours)</Text>
+              <Text style={{ fontSize: 12, color: '#666' }}>Vote Count</Text>
+            </View>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -107,18 +378,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 17,
+    padding: 10,
+    // backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    height: 90,
   },
   profileBox: { flexDirection: 'row', alignItems: 'center' },
   avatar: {
     width: s(40),
     height: vs(40),
-    borderRadius: ms(20),
-    marginRight: s(10),
+    borderRadius: ms(25),
+    marginRight: s(12),
   },
   name: { fontSize: ms(16), fontWeight: '700' },
   role: { fontSize: ms(12), color: '#777' },
   notification: { position: 'relative' },
-  bellIcon: { width: s(20), height: vs(20), marginRight: s(10) },
+  bellIcon: { width: s(20), height: vs(20), marginRight: s(12) },
   redDot: {
     position: 'absolute',
     top: vs(-7),
@@ -153,25 +435,28 @@ const styles = StyleSheet.create({
   title: { fontSize: ms(18), fontWeight: '700' },
   subtitle: { color: '#777', marginBottom: vs(10) },
   card: {
-    backgroundColor: '#a18cd1',
-    padding: s(20),
+    // backgroundColor: '#7555CE',
+    padding: s(3),
     borderRadius: ms(16),
     shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowRadius: 4,
     marginBottom: vs(5),
+    width: 350,
+    height: 269,
   },
   candidatesRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: vs(10),
+
+    margin: vs(10),
   },
   candidate: {
-    width: s(30),
+    width: s(35),
     height: vs(30),
-    borderRadius: ms(15),
+    borderRadius: ms(17),
     borderWidth: 2,
     borderColor: '#fff',
+    marginLeft: vs(10),
   },
   moreBox: {
     backgroundColor: '#fff',
@@ -181,22 +466,31 @@ const styles = StyleSheet.create({
     marginLeft: s(10),
   },
   moreText: { fontSize: ms(12), fontWeight: '500' },
-  label: { color: '#fff', marginTop: vs(5) },
-  date: { color: '#fff', fontWeight: '500' },
+  label: {
+    color: '#fff',
+    marginTop: vs(2),
+    marginLeft: vs(10),
+  },
+  date: {
+    color: '#fff',
+    fontWeight: '500',
+    marginLeft: vs(10),
+  },
   selection: {
     fontSize: ms(18),
     fontWeight: '700',
     color: '#fff',
     marginVertical: vs(5),
+    marginLeft: vs(10),
   },
-  region: { color: '#fff', marginBottom: vs(10) },
+  region: { color: '#fff', marginLeft: vs(10) },
   timerBox: {
     backgroundColor: '#222',
-  width:210,
+    width: 210,
     borderRadius: ms(10),
     paddingVertical: vs(10),
     alignItems: 'center',
-    marginRight:20
+    marginRight: 20,
   },
   timerText: { color: '#fff' },
   voteBtn: {

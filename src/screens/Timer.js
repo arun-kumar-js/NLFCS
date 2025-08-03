@@ -1,54 +1,121 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, Text, View,Button } from 'react-native';
-import { AnimatedCircularProgress } from 'react-native-circular-progress';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, View, Button } from 'react-native';
+import CircularProgress from '../components/CircularProgress';
 import { s, vs } from 'react-native-size-matters';
 import { useNavigation } from '@react-navigation/native';
+import { useSelector } from 'react-redux';
+import axios from 'axios';
+import { BASE_URL, AUTH_USERNAME, AUTH_PASSWORD } from '../config/config';
 
 const Timer = () => {
   const navigation = useNavigation();
-  const [timeLeft, setTimeLeft] = useState(32 * 60 * 60 + 10 * 60 + 22); // seconds
-  const progressRef = useRef(null);
+  const [regionData, setRegionData] = useState();
+  const [hasStarted, setHasStarted] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(null);
+  const userData = useSelector(state => state.userData.otpVerificationResponse);
+
+  const region = userData?.data?.[0]?.region_id;
+  //console.log(region);
+  const startDate = regionData?.data?.[0]?.start_date;
+  //console.log(startDate);
+  const timeout = async () => {
+    try {
+      const response = await axios.post(
+        `${BASE_URL}/api/election_start_countdown`,
+        {
+          region_id: region,
+        },
+        {
+          auth: {
+            username: AUTH_USERNAME,
+            password: AUTH_PASSWORD,
+          },
+        },
+      );
+      //console.log('Region ID submitted:', response.data);
+      setRegionData(response.data);
+    } catch (error) {
+      //console.error('Failed to send region ID:', error);
+    }
+  };
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTimeLeft(prev => {
-        const newTime = prev > 0 ? prev - 1 : 0;
-        const newFill = ((32 * 60 * 60 - newTime) / (32 * 60 * 60)) * 100;
-        if (progressRef.current) {
-          progressRef.current.animate(newFill, 500);
-        }
-        return newTime;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
+    if (userData?.data?.[0]?.region_id) {
+      //console.log('Region ID:', userData.data[0].region_id);
+      timeout();
+    }
   }, []);
 
-  const hours = String(Math.floor(timeLeft / 3600)).padStart(2, '0');
-  const minutes = String(Math.floor((timeLeft % 3600) / 60)).padStart(2, '0');
-  const seconds = String(timeLeft % 60).padStart(2, '0');
+  useEffect(() => {
+    if (regionData?.data?.[0]?.start_date) {
+      const now = new Date();
+      const electionStart = new Date(regionData.data[0].start_date);
+
+      if (now >= electionStart) {
+        setHasStarted(true);
+        setTimeLeft(0);
+        setProgress(100);
+        return;
+      }
+
+      const totalSeconds = Math.floor((electionStart - now) / 1000);
+      setTimeLeft(totalSeconds);
+      setProgress(0);
+      const interval = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            setHasStarted(true);
+            setProgress(100);
+            navigation.replace('Home');
+            return 0;
+          }
+          const newProgress =
+            ((totalSeconds - (prev - 1)) / totalSeconds) * 100;
+          setProgress(newProgress);
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [regionData]);
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Voting starts in</Text>
-      <AnimatedCircularProgress
-        ref={progressRef}
+      <CircularProgress
         size={250}
         width={14}
-        fill={12}
+        fill={progress}
         tintColor="#8e2de2"
         backgroundColor="#e6e6fa"
-        rotation={0}
-        duration={500}
-        lineCap="round"
         style={styles.progress}
       >
-        {() => <Text style={styles.timeText}>{`${hours}:${minutes}:${seconds}`}</Text>}
-      </AnimatedCircularProgress>
-      <Text style={styles.subtitle}>Voting Yet to start</Text>
-     <Button
-        title="Next"
-        onPress={() => navigation.navigate("Home")}
-      />
+        {(() => {
+          const formatTime = seconds => {
+            const h = String(Math.floor(seconds / 3600)).padStart(2, '0');
+            const m = String(Math.floor((seconds % 3600) / 60)).padStart(
+              2,
+              '0',
+            );
+            const s = String(seconds % 60).padStart(2, '0');
+            return `${h}:${m}:${s}`;
+          };
+          return (
+            <Text style={styles.timeText}>
+              {!hasStarted && timeLeft != null
+                ? formatTime(timeLeft)
+                : '00:00:00'}
+            </Text>
+          );
+        })()}
+      </CircularProgress>
+      <Text style={styles.subtitle}>
+        {hasStarted ? 'Voting Started' : 'Voting Yet to start'}
+      </Text>
+      <Button title="Next" onPress={() => navigation.replace('Home')} />
     </View>
   );
 };

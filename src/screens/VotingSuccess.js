@@ -41,9 +41,7 @@ const VotingSuccess = () => {
   return (
     <View style={[styles.background, styles.container]}>
       <Text style={styles.title}>Voting Success</Text>
-      <Text style={styles.subtitle}>
-        Zarejestruj się ponownie, aby robić zakupy bez opuszczania.
-      </Text>
+      
 
       <Text style={styles.resultLabel}>Results available within</Text>
 

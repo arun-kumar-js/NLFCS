@@ -1,25 +1,32 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, Image, ScrollView, TouchableOpacity } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  Image,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
 import { s, vs, ms } from 'react-native-size-matters';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useSelector, useDispatch } from 'react-redux';
+import { setSelectedCandidates } from '../slice/selectedCandidatesSlice';
+import axios from "axios"
+import { BASE_URL, AUTH_USERNAME, AUTH_PASSWORD } from '../config/config';
 
-const dummyImage = require('../assets/images/image11.png');
-
-const candidates = [
-  { id: 1, name: 'Kalyana Sundaram', code: '20324453', image: dummyImage },
-  { id: 2, name: 'Somu Agarwal', code: '20324453', image: dummyImage },
-  { id: 3, name: 'Kalyana Sundaram', code: '20324453', image: dummyImage },
-  { id: 4, name: 'Somu Agarwal', code: '20324453', image: dummyImage },
-  { id: 5, name: 'Kalyana Sundaram', code: '20324453', image: dummyImage },
-  { id: 6, name: 'Somu Agarwal', code: '20324453', image: dummyImage },
-  { id: 7, name: 'Kalyana Sundaram', code: '20324453', image: dummyImage },
-  { id: 8, name: 'Somu Agarwal', code: '20324453', image: dummyImage },
-];
 
 const CandidateList = () => {
   const [selectedCandidates, setSelectedCandidates] = useState([]);
+  console.log(selectedCandidates);
+  const dispatch = useDispatch();
   const navigation = useNavigation();
+  const electionList = useSelector(state => state.electionList.data);
+
+  const candidateList = electionList?.[0]?.canditates || [];
+  const userData = useSelector(
+    state => state.userData?.otpVerificationResponse,
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -30,40 +37,131 @@ const CandidateList = () => {
 
         <View style={styles.voteCard}>
           <Text style={styles.totalVotes}>
-            Total votes <Text style={styles.voteCount}>🔷 550</Text>
+            Total votes{' '}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                display: 'inline',
+              }}
+            >
+              <Image
+                source={require('../assets/images/vote.png')}
+                style={{ width: 16, height: 16, marginRight: 6 }}
+              />
+              <Text style={styles.voteCount}>550</Text>
+            </View>
           </Text>
-          <Text style={styles.voteClose}>🕒 Voting closes at 8 pm Apr 3, 2025</Text>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginTop: vs(6),
+            }}
+          >
+            <Image
+              source={require('../assets/images/time2.png')}
+              style={{
+                width: 16,
+                height: 16,
+                marginRight: 6,
+                alignItems: 'center',
+              }}
+            />
+            <Text style={styles.voteClose}>
+              Voting closes at{' '}
+              {electionList?.[0]?.end_date
+                ? new Date(electionList[0].end_date).toLocaleString()
+                : 'unknown time'}
+            </Text>
+          </View>
           <View style={styles.entitlementBox}>
-            <Text style={styles.entitlementText}>🗳️ You are entitled to vote for up to 16 candidates</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Image
+                source={require('../assets/images/vote1.png')}
+                style={{ width: 16, height: 16, marginRight: 6 }}
+              />
+              <Text style={styles.entitlementText}>
+                You are entitled to vote for up to 16 candidates
+              </Text>
+            </View>
           </View>
         </View>
 
         <View style={styles.grid}>
-          {candidates.map((candidate, index) => (
+          {candidateList.map((candidate, index) => (
             <TouchableOpacity
               key={index}
               style={[
                 styles.card,
-                selectedCandidates.includes(candidate.id) && styles.selectedCard,
+                selectedCandidates.includes(candidate.id) &&
+                  styles.selectedCard,
               ]}
               onPress={() => {
                 if (selectedCandidates.includes(candidate.id)) {
-                  setSelectedCandidates(prev => prev.filter(id => id !== candidate.id));
+                  setSelectedCandidates(prev =>
+                    prev.filter(id => id !== candidate.id),
+                  );
                 } else if (selectedCandidates.length < 4) {
                   setSelectedCandidates(prev => [...prev, candidate.id]);
                 }
               }}
             >
-              <Image source={candidate.image} style={styles.image} />
+              <Image
+                source={{
+                  uri: `${electionList?.[0]?.image_path}${candidate.image}`,
+                }}
+                style={styles.image}
+              />
               <Text style={styles.name}>{candidate.name}</Text>
-              <Text style={styles.code}>Member code:{candidate.code}</Text>
+              <Text style={styles.code}>
+                Member code: {candidate.member_code}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
 
         <TouchableOpacity
           style={styles.voteButton}
-          onPress={() => navigation.navigate('VoteVerification', { selectedCandidates })}
+          onPress={async () => {
+            if (selectedCandidates.length < 2) {
+              alert('Please select at least 2 candidates');
+              return;
+            }
+            if (selectedCandidates.length > 4) {
+              alert('You can select a maximum of 4 candidates');
+              return;
+            }
+            const phoneNumber = userData?.[0]?.mobile;
+
+            try {
+              const response = await axios.post(
+                `${BASE_URL}/api/generate_otp`,
+                {
+                  mobile: phoneNumber,
+                },
+                {
+                  auth: {
+                    username: AUTH_USERNAME,
+                    password: AUTH_PASSWORD,
+                  },
+                }
+              );
+
+              const data = response.data; 
+
+              if (response.data.status === true) {
+                const selectedData = candidateList.filter(candidate => selectedCandidates.includes(candidate.id));
+                navigation.navigate('VoteVerification', { selectedCandidates: selectedData });
+                console.log('OTP sent:', data);
+              } else {
+                alert(data.message || 'Failed to send OTP');
+              }
+            } catch (error) {
+              console.error('API error:', error);
+              alert('Something went wrong while sending OTP.');
+            }
+          }}
         >
           <Text style={styles.voteButtonText}>Conform your Vote</Text>
         </TouchableOpacity>
@@ -116,9 +214,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   voteClose: {
-    marginTop: vs(6),
     color: '#999',
     fontSize: ms(12),
+    marginTop: 0,
   },
   entitlementBox: {
     marginTop: vs(10),
@@ -137,6 +235,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '48%',
+    height: '50%',
     backgroundColor: '#F8F8F8',
     borderRadius: ms(10),
     padding: s(10),
@@ -147,9 +246,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#D7A6FF',
   },
   image: {
-    width: ms(160),
+    width: '100%',
     height: vs(145),
-    padding: ms(10),
+    resizeMode: 'stretch',
+    borderRadius: ms(8),
     marginBottom: vs(8),
   },
   name: {

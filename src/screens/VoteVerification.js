@@ -7,24 +7,82 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
+import axios from 'axios';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState, useRef } from 'react';
 import { s, vs, ms } from 'react-native-size-matters';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { BASE_URL, AUTH_USERNAME, AUTH_PASSWORD } from '../config/config';
+import { useSelector } from 'react-redux';
 
-const dummyImage = require('../assets/images/dummy.png');
 
 const VoteVerification = () => {
+const electionList = useSelector(state => state?.electionList?.data || []);
+  console.log(electionList);
+  const electionId = electionList?.[0]?.id;
+  console.log(electionId);
+  const user = useSelector((state) => state.userData.otpVerificationResponse?.[0]);
+  console.log("user", user)
+  console.log(user)
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const inputRefs = useRef([]);
   const navigation = useNavigation();
+  const route = useRoute();
+  const candidates = route.params?.selectedCandidates || [];
+  console.log('candidates', candidates);       
+  
+const onSubmit = async () => {
+    // Logging as requested before try block
+    console.log('OTP:', otp);
+    console.log('Mobile:', user.mobile);
+    console.log('Election ID:', electionId);
+    console.log('Member ID:', user.member_code);
+    console.log('Selected Candidates:', candidates);
+    try {
+   const requestBody = {
+     mobile: user.mobile,
+     otp: otp.join(''),
+     election_id: electionId,
+     member_id: user.member_code,
+     candidate_ids: candidates.map(item => ({
+       candidate_ids: item.candidate_id.toString(),
+     })),
+   };
 
-  const candidates = [
-    { id: 1, name: 'Frank Esteban', code: '20324453', image: dummyImage },
-    { id: 2, name: 'Frank Esteban', code: '20324453', image: dummyImage },
-    { id: 3, name: 'Frank Esteban', code: '20324453', image: dummyImage },
-    { id: 4, name: 'Frank Esteban', code: '20324453', image: dummyImage },
-  ];
+   console.log('Request Body:', JSON.stringify(requestBody, null, 2));
+
+      const response = await axios.post(
+        `${BASE_URL}/api/vote_submit`,
+        requestBody,
+        {
+          auth: {
+            username: AUTH_USERNAME,
+            password: AUTH_PASSWORD,
+          },
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+
+      const result = response.data;
+      console.log('Response:', result);
+      
+
+      if (result.status === true) {
+        navigation.replace('VotingSuccess');
+      } else {
+        alert(result.message || 'Something went wrong');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Failed to submit vote.');
+    }
+  };
+
+
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -65,17 +123,22 @@ const VoteVerification = () => {
 
         {candidates.map((item, index) => (
           <View key={index} style={styles.card}>
-            <Image source={item.image} style={styles.avatar} />
+            <Image
+              source={{
+                uri: `https://spider.org.in/nlfcs/uploads/${item?.image}`,
+              }}
+              style={styles.avatar}
+            />
             <View>
               <Text style={styles.name}>{item.name}</Text>
-              <Text style={styles.code}>Member code:{item.code}</Text>
+              <Text style={styles.code}>Member code:{item.member_code}</Text>
             </View>
           </View>
         ))}
 
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.replace('VotingSuccess')}
+          onPress={onSubmit}
         >
           <Text style={styles.buttonText}>Submit</Text>
         </TouchableOpacity>
@@ -140,6 +203,7 @@ const styles = StyleSheet.create({
     height: ms(60),
     borderRadius: ms(30),
     marginRight: s(12),
+    resizeMode: 'contain',
   },
   name: {
     fontSize: ms(14),
