@@ -6,7 +6,7 @@ import { View, StyleSheet } from 'react-native';
 import OnBoardingPage1 from '../screens/OnBoardingPage1';
 import OnBoardingPage2 from '../screens/OnBoardingPage2';
 import OnBoardingPage3 from '../screens/OnBoardingPage3';
-import Timer from '../screens/Timer'
+
 
 const OnboardingSwiper = () => {
   return (
@@ -20,9 +20,7 @@ const OnboardingSwiper = () => {
       <View key="3">
         <OnBoardingPage3 />
       </View>
-      <View key="4">
-        <Timer />
-      </View>
+      
     </PagerView>
   );
 };

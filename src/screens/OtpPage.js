@@ -11,7 +11,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-
+  SafeAreaView,
 } from 'react-native';
 import { ms, s, vs } from 'react-native-size-matters';
 import { useNavigation } from '@react-navigation/native';
@@ -52,13 +52,15 @@ const OtpPage = () => {
         },
       );
       console.log('OTP response:', response.data);
-      if (response.data.status === true) {
-        Alert.alert('Success', 'OTP sent successfully');
+      if (response?.data?.status===true) {
+        Alert.alert('Success', response.data.message);
       } else {
-         Alert.alert('invalid');
+        setTimeout(() => {
+          Alert.alert('Error', 'Unexpected response from server');
+        }, 100);
       }
     } catch (error) {
-     console.log('OTP request error:', error);
+    
     }
   };
 
@@ -86,17 +88,16 @@ const OtpPage = () => {
           {
             text: 'OK',
             onPress: () => navigation.navigate('Onboarding'),
-          },
+          }
         ]);
+      } else {
+        Alert.alert('Failure', 'Invalid OTP')
       }
-      if (response.data.otp) {
-        setOtp(response.data.otp.split(''));
-      }
-    } catch (error) {
-      console.error(error);
-      Alert.alert('Error', 'OTP verification failed');
+    } catch {
+      console.log(error)
     }
-  };
+  }
+
 
   const handleOtpChange = (text, index) => {
     if (/^\d*$/.test(text)) {
@@ -152,17 +153,19 @@ const OtpPage = () => {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Back Arrow */}
-        <TouchableOpacity
-          style={styles.backArrow}
-          onPress={() => navigation.goBack()}
-        >
-          <Image
-            source={require('../assets/images/backarrow.png')}
-            style={styles.backIcon}
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
+        <SafeAreaView>
+          {/* Back Arrow */}
+          <TouchableOpacity
+            style={styles.backArrow}
+            onPress={() => navigation.goBack()}
+          >
+            <Image
+              source={require('../assets/images/backarrow.png')}
+              style={styles.backIcon}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        </SafeAreaView>
 
         {/* Illustration */}
         <Image

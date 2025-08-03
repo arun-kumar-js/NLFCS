@@ -14,11 +14,18 @@ const Timer = () => {
   const [progress, setProgress] = useState(0);
   const [timeLeft, setTimeLeft] = useState(null);
   const userData = useSelector(state => state.userData.otpVerificationResponse);
-
-  const region = userData?.data?.[0]?.region_id;
-  //console.log(region);
+  console.log('userData', userData);
+  const region = userData?.[0]?.region_id;
+  console.log('region',);
   const startDate = regionData?.data?.[0]?.start_date;
-  //console.log(startDate);
+  console.log(startDate);
+    useEffect(() => {
+      if (region) {
+        timeout();
+      }
+    }, [region]);
+  
+  
   const timeout = async () => {
     try {
       const response = await axios.post(
@@ -33,29 +40,25 @@ const Timer = () => {
           },
         },
       );
-      //console.log('Region ID submitted:', response.data);
+      console.log('Region ID submitted:', response.data);
       setRegionData(response.data);
     } catch (error) {
-      //console.error('Failed to send region ID:', error);
+      console.error('Failed to send region ID:', error);
     }
   };
 
-  useEffect(() => {
-    if (userData?.data?.[0]?.region_id) {
-      //console.log('Region ID:', userData.data[0].region_id);
-      timeout();
-    }
-  }, []);
+
 
   useEffect(() => {
     if (regionData?.data?.[0]?.start_date) {
       const now = new Date();
       const electionStart = new Date(regionData.data[0].start_date);
-
+      console.log('date', regionData.data[0].start_date);
       if (now >= electionStart) {
         setHasStarted(true);
         setTimeLeft(0);
         setProgress(100);
+        navigation.replace('Home');
         return;
       }
 

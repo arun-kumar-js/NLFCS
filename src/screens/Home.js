@@ -24,10 +24,13 @@ const Home = () => {
   const otpResponse = useSelector(
     state => state.userData?.otpVerificationResponse,
   );
+  console.log('otpResponse', otpResponse);
+  console.log(otpResponse?.[0]?.id);
+  console.log(otpResponse?.[0]?.region_id);
   const electionListResult = useSelector(
     state => state?.electionList?.data || [],
   );
-  console.log(electionListResult);
+ 
   const voteStatus = electionListResult?.[0]?.vote_status;
 
   useEffect(() => {
@@ -85,17 +88,21 @@ const Home = () => {
         },
       );
       const rawTimeSlots = response.data?.data?.[0]?.timeSlots || [];
-      // Take only first 15 data points
+    
       const limitedTimeSlots = rawTimeSlots.slice(0, 15);
       const chartPoints = limitedTimeSlots.map(slot => ({
         time: slot.time,
         votes: slot.votes,
       }));
       setChartData(chartPoints);
+      console.log(chartData);
     } catch (error) {
       console.error('Error fetching chart data:', error);
     }
   };
+
+  // Calculate maxVotes for chart Y-axis scaling (fallback to 1 if all are zero)
+  const maxVotes = Math.max(...chartData.map(d => d.votes), 1);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -103,12 +110,14 @@ const Home = () => {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.profileBox}>
-            <Image
-              source={{
-                uri: `${electionData?.[0]?.image_path}1753084380_e294e4eb588cc34acea2.png`,
-              }}
-              style={styles.avatar}
-            />
+            <TouchableOpacity onPress={() => navigation.navigate('profile')}>
+              <Image
+                source={{
+                  uri: `${electionData?.[0]?.image_path}1753084380_e294e4eb588cc34acea2.png`,
+                }}
+                style={styles.avatar}
+              />
+            </TouchableOpacity>
             <View>
               <Text style={styles.name}>
                 {otpResponse?.[0]?.name || 'User'}
@@ -227,19 +236,28 @@ const Home = () => {
               borderRadius: 12,
             }}
           >
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: 'bold',
-                marginBottom: 15,
-                textAlign: 'center',
-              }}
-            >
-              Voting Progress
-            </Text>
+            {/* Top Row: Voting Progress title, total votes, and Go to Map */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: 'bold',
+                  marginBottom: 0,
+                  textAlign: 'center',
+                }}
+              >
+                Voting Progress
+              </Text>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#333' }}>
+                  Total Votes: {chartData.reduce((sum, item) => sum + item.votes, 0)}
+                </Text>
+               
+              </View>
+            </View>
 
             {/* Chart Container */}
-            <View style={{ flexDirection: 'row', height: 200 }}>
+            <View style={{ flexDirection: 'row', height: 200, position: 'relative' }}>
               {/* Y-Axis */}
               <View
                 style={{
@@ -248,31 +266,45 @@ const Home = () => {
                   paddingRight: 10,
                 }}
               >
-                <Text
-                  style={{ fontSize: 11, color: '#666', textAlign: 'right' }}
-                >
-                  {Math.max(...chartData.map(d => d.votes))}
-                </Text>
-                <Text
-                  style={{ fontSize: 11, color: '#666', textAlign: 'right' }}
-                >
-                  {Math.round(Math.max(...chartData.map(d => d.votes)) * 0.75)}
-                </Text>
-                <Text
-                  style={{ fontSize: 11, color: '#666', textAlign: 'right' }}
-                >
-                  {Math.round(Math.max(...chartData.map(d => d.votes)) * 0.5)}
-                </Text>
-                <Text
-                  style={{ fontSize: 11, color: '#666', textAlign: 'right' }}
-                >
-                  {Math.round(Math.max(...chartData.map(d => d.votes)) * 0.25)}
-                </Text>
-                <Text
-                  style={{ fontSize: 11, color: '#666', textAlign: 'right' }}
-                >
-                  0
-                </Text>
+                {['400', '300', '200', '100'].map((label, index) => (
+                  <Text
+                    key={index}
+                    style={{
+                      fontSize: 12,
+                      color: index === 0 ? '#444' : '#666',
+                      textAlign: 'right',
+                      fontWeight: index === 0 ? '700' : '600',
+                      letterSpacing: 0.15,
+                    }}
+                  >
+                    {label}
+                  </Text>
+                ))}
+              </View>
+
+              {/* Y-axis grid lines */}
+              <View
+                style={{
+                  position: 'absolute',
+                  left: 60,
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  pointerEvents: 'none',
+                }}
+              >
+                {[0, 1, 2, 3].map((i) => (
+                  <View
+                    key={i}
+                    style={{
+                      height: 1,
+                      backgroundColor: i === 0 ? '#d2d2d2' : '#eee',
+                      width: '100%',
+                    }}
+                  />
+                ))}
               </View>
 
               {/* Chart Bars */}
@@ -282,69 +314,81 @@ const Home = () => {
                   flexDirection: 'row',
                   alignItems: 'flex-end',
                   height: 200,
+                  marginLeft: 0,
+                  zIndex: 2,
                 }}
               >
-                {chartData.map((item, index) => {
-                  const maxVotes = Math.max(...chartData.map(d => d.votes));
-                  const barHeight =
-                    maxVotes > 0 ? (item.votes / maxVotes) * 160 : 0;
-
-                  // Format time from the API data
-                  let timeLabel = '';
-                  if (item.time) {
-                    // If time is in format like "08:00" or "8:00"
-                    const timeParts = item.time.split(':');
-                    const hour = parseInt(timeParts[0]);
-                    const minute = parseInt(timeParts[1]);
-                    timeLabel = `${hour}:${minute.toString().padStart(2, '0')}`;
-                  } else {
-                    // Fallback to calculated time slots
-                    const hour = 8 + index;
-                    timeLabel = `${hour}:00`;
-                  }
-
+                {[...Array(12)].map((_, index) => {
+                  // If chartData has fewer than 12, fill with 0
+                  const item = chartData[index] || { votes: 0 };
+                  // Normalize bar height to a max of 400
+                  const barHeight = Math.min(item.votes / 400, 1) * 160;
+                  // Dynamic bar color: deeper purple for higher votes
+                  const minLight = 70, maxLight = 53;
+                  const lightness =
+                    400 === 0
+                      ? maxLight
+                      : maxLight + (minLight - maxLight) * (1 - Math.min(item.votes / 400, 1));
+                  const barColor = `hsl(260, 65%, ${lightness}%)`;
+                  // Assign time label: hide for first index, else show index+1
+                  const timeLabel = index === 0 ? '' : `${index + 1}`;
+                  // Skip rendering time label if timeLabel is "0"
+                  // (But with current logic, index starts from 0, so timeLabel is "" for index 0)
                   return (
                     <View
                       key={index}
                       style={{
                         flex: 1,
                         alignItems: 'center',
-                        marginHorizontal: 1,
+                        marginHorizontal: 2,
+                        marginTop: 6,
+                        marginBottom: 6,
                       }}
                     >
                       {/* Bar */}
                       <View
                         style={{
-                          width: 16,
+                          width: 20,
                           height: barHeight,
-                          backgroundColor: '#7555CE',
-                          borderRadius: 3,
-                          marginBottom: 8,
+                          backgroundColor: barColor,
+                          borderRadius: 4,
+                          marginBottom: 6,
                           shadowColor: '#000',
-                          shadowOffset: { width: 0, height: 2 },
+                          shadowOffset: { width: 0, height: 1 },
                           shadowOpacity: 0.1,
-                          shadowRadius: 3,
-                          elevation: 3,
+                          shadowRadius: 2,
+                          elevation: 2,
                         }}
                       />
-
                       {/* Vote count on bar */}
-                      <Text
-                        style={{
-                          fontSize: 9,
-                          color: '#666',
-                          fontWeight: '500',
-                        }}
-                      >
-                        {item.votes}
-                      </Text>
-
+                      {item.votes > 0 && (
+                        <Text
+                          style={{
+                            fontSize: 10,
+                            color: '#222',
+                            fontWeight: '700',
+                            textShadowColor: '#fff',
+                            textShadowOffset: { width: 0, height: 1 },
+                            textShadowRadius: 1,
+                          }}
+                        >
+                          {item.votes}
+                        </Text>
+                      )}
                       {/* Time label */}
-                      <Text
-                        style={{ fontSize: 8, color: '#999', marginTop: 2 }}
-                      >
-                        {timeLabel}
-                      </Text>
+                      {timeLabel !== '0' && (
+                        <Text
+                          style={{
+                            fontSize: 9,
+                            color: '#555',
+                            marginTop: 2,
+                            fontWeight: '600',
+                            letterSpacing: 0.2,
+                          }}
+                        >
+                          {timeLabel}
+                        </Text>
+                      )}
                     </View>
                   );
                 })}

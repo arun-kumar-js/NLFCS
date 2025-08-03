@@ -16,6 +16,7 @@ import Timer from './src/screens/Timer';
 import CandidateList from './src/screens/CandidateList';
 import VoteVerification from './src/screens/VoteVerification';
 import VotingSuccess from './src/screens/VotingSuccess';
+import profile from './src/screens/profile';
 
 const Stack = createNativeStackNavigator();
 
@@ -40,6 +41,7 @@ export default function App() {
           <Stack.Screen name="Onboarding" component={OnboardingSwiper} />
           <Stack.Screen name="VoteVerification" component={VoteVerification} />
           <Stack.Screen name="VotingSuccess" component={VotingSuccess} />
+          <Stack.Screen name="profile" component={profile} />
         </Stack.Navigator>
       </NavigationContainer>
     </Provider>

@@ -24,7 +24,7 @@ const OnBoardingPage3 = () => {
             <Pressable onPress={() => navigation.goBack()}>
               <Text style={styles.backArrow}>{'←'}</Text>
             </Pressable>
-            <Pressable onPress={() => navigation.goBack()}>
+            <Pressable onPress={() => navigation.reolace("Timer")}>
               <Text style={styles.skipText}>Skip</Text>
             </Pressable>
           </View>
