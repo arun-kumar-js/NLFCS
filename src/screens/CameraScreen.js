@@ -20,13 +20,16 @@ import {
   testMLKitIntegration,
 } from '../utils/ocrHelperRN';
 
-const CameraScreen = () => {
+const CameraScreen = ({ route }) => {
+  const { icNumber: icParam } = route?.params || {};
   const [hasPermission, setHasPermission] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const [capturedImage, setCapturedImage] = useState(null);
   const [extractedNumbers, setExtractedNumbers] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const[icNumber,setIcNumber]=useState()
   const devices = useCameraDevices();
+  
   const device =
     devices.back ||
     (devices && Object.values(devices).find(d => d && d.position === 'back'));
@@ -62,6 +65,10 @@ const CameraScreen = () => {
       }
     };
     checkPermissions();
+    if (icParam) {
+      setIcNumber(icParam);
+      console.log('IC Number from params:', icParam);
+    }
   }, []);
 
   // Debug device detection
@@ -103,25 +110,23 @@ const CameraScreen = () => {
 
       // Use OCR helper to extract numbers from image
       const result = await extractNumbersFromImage(imagePath);
+    
 
       console.log('OCR processing result:', result);
 
       if (result.success) {
         const formattedNumbers = formatExtractedNumbers(result.numbers);
         setExtractedNumbers(formattedNumbers);
-        console.log('IC Number extracted successfully:', formattedNumbers);
-        console.log('Confidence:', result.confidence);
-        console.log('Message:', result.message);
 
-        // Show success alert
-        Alert.alert(
-          'Success',
-          `IC Number extracted: ${formattedNumbers[0] || 'Not found'}`,
-        );
+        if (formattedNumbers[0] === icNumber) {
+          navigation.navigate('MobileNumberVerify', { icNumber });
+        } else {
+          Alert.alert('Mismatch', 'IC number does not match. Please try again.');
+        }
       } else {
         console.log('OCR failed:', result.message);
         setExtractedNumbers([]);
-        Alert.alert('Error', result.message);
+       
       }
     } catch (error) {
       console.error('Error processing image for IC number:', error);
@@ -129,6 +134,12 @@ const CameraScreen = () => {
       Alert.alert('Error', 'Failed to process image. Please try again.');
     }
   };
+
+  if (extractedNumbers === icNumber) {
+  navigation.navigate("")
+}
+
+
 
   const toggleCamera = () => {
     setIsActive(!isActive);
@@ -141,14 +152,7 @@ const CameraScreen = () => {
 
   const getNumberLabel = (index, number) => {
     const labels = [
-      'ID Number',
-      'Date of Birth',
-      'Issue Year',
-      'Expiry Year',
-      'PIN Code',
-      'Serial Number',
-      'Document Number',
-      'Reference Number',
+      'Ic Number'
     ];
     return labels[index] || `Number ${index + 1}`;
   };

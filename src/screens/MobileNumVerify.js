@@ -37,8 +37,12 @@ const handleOTP = async () => {
     );
     console.log('OTP response:', response.data);
     if (response.data?.status === true) {
-      Alert.alert('Success', 'OTP sent successfully');
-      navigation.navigate('OtpPage');
+      Alert.alert('Success', 'OTP sent successfully', [
+        {
+          text: 'OK',
+          onPress: () => navigation.navigate('OtpPage'),
+        },
+      ]);
     } else {
       Alert.alert('Error', response.data?.message || 'Failed to send OTP');
     }
@@ -111,14 +115,7 @@ const handleOTP = async () => {
           )}
         </View>
 
-        {/* Forgot Number */}
-        <Pressable
-          style={styles.forgotContainer}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.forgotText}>Forgot number</Text>
-        </Pressable>
-
+        
         {/* Get OTP Button */}
         <TouchableOpacity style={styles.button} onPress={handleOTP}>
           <Text style={styles.buttonText}>Get OTP</Text>

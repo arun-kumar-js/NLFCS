@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -14,22 +14,84 @@ import { useSelector, useDispatch } from 'react-redux';
 import { setSelectedCandidates } from '../slice/selectedCandidatesSlice';
 import axios from "axios"
 import { BASE_URL, AUTH_USERNAME, AUTH_PASSWORD } from '../config/config';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
-const CandidateList = () => {
+const CandidateList = ({ navigation, route }) => {
+  const [electionId, setElectionId] = useState(route?.params?.electionId);
+  console.log("electionId",electionId);
   const [selectedCandidates, setSelectedCandidates] = useState([]);
-  console.log(selectedCandidates);
-  const dispatch = useDispatch();
-  const navigation = useNavigation();
-  const electionList = useSelector(state => state.electionList.data);
+  const [userData, setUserData] = useState(null);
 
-  const candidateList = electionList?.[0]?.canditates || [];
-  const userData = useSelector(
-    state => state.userData?.otpVerificationResponse,
-  );
+  const [ctionlist,setElectionList]=useState()
+  console.log('userData', userData);
+  const region_id = userData?.[0]?.region_id;
+  const member_id = userData?.[0]?.member_code;
+  console.log(region_id, member_id);
+  // If navigation is not passed as prop, fallback to hook (for backward compatibility)
+  const nav = navigation || useNavigation();
+  const electionList = useSelector(state => state.electionList.data);
+  console.log('electionList', electionList);
+  const currentElection = electionList?.find(e => e.id === electionId);
+console.log(
+  'currentElection',
+  currentElection.max_count,
+  currentElection.min_count,
+);
+  if (!currentElection) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.header}>Election not found</Text>
+      </SafeAreaView>
+    );
+  }
+
+  useEffect(() => {
+    if (route?.params?.electionId) {
+      setElectionId(route.params.electionId);
+    }
+  }, [route?.params?.electionId]);
+ 
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const storedData = await AsyncStorage.getItem('user');
+        if (storedData) {
+          const parsed = JSON.parse(storedData);
+          setUserData(parsed);
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
+    fetchUserData();
+  }, []);
+
+  const [candidateList, setCandidateList] = useState([]);
+console.log(candidateList);
+  useEffect(() => {
+    if (electionList?.length && electionId) {
+      const matchedElection = electionList.find(e => e.id === electionId);
+      if (matchedElection?.canditates) {
+        setCandidateList(matchedElection.canditates);
+      }
+    }
+  }, [electionList, electionId]);
+
+  
+  
 
   return (
     <SafeAreaView style={styles.container}>
+      <TouchableOpacity
+        onPress={() => nav.goBack()}
+        style={{ marginBottom: 10 }}
+      >
+        <Image
+          source={require('../assets/images/backarrow.png')}
+          style={{ width: 24, height: 24 }}
+        />
+      </TouchableOpacity>
       <ScrollView showsVerticalScrollIndicator={false}>
         <Text style={styles.header}>Candidate list</Text>
         <Text style={styles.subHeader}>Committee Member Selection</Text>
@@ -49,7 +111,9 @@ const CandidateList = () => {
                 source={require('../assets/images/vote.png')}
                 style={{ width: 16, height: 16, marginRight: 6 }}
               />
-              <Text style={styles.voteCount}>550</Text>
+              <Text style={styles.voteCount}>
+                {currentElection?.vote_count || 0}
+              </Text>
             </View>
           </Text>
           <View
@@ -70,8 +134,8 @@ const CandidateList = () => {
             />
             <Text style={styles.voteClose}>
               Voting closes at{' '}
-              {electionList?.[0]?.end_date
-                ? new Date(electionList[0].end_date).toLocaleString()
+              {currentElection?.end_date
+                ? new Date(currentElection.end_date).toLocaleString()
                 : 'unknown time'}
             </Text>
           </View>
@@ -82,7 +146,7 @@ const CandidateList = () => {
                 style={{ width: 16, height: 16, marginRight: 6 }}
               />
               <Text style={styles.entitlementText}>
-                You are entitled to vote for up to 16 candidates
+                You are entitled to vote for up to {currentElection.max_count}
               </Text>
             </View>
           </View>
@@ -102,14 +166,17 @@ const CandidateList = () => {
                   setSelectedCandidates(prev =>
                     prev.filter(id => id !== candidate.id),
                   );
-                } else if (selectedCandidates.length < 4) {
+                } else if (
+                  selectedCandidates.length <
+                  parseInt(currentElection?.max_count)
+                ) {
                   setSelectedCandidates(prev => [...prev, candidate.id]);
                 }
               }}
             >
               <Image
                 source={{
-                  uri: `${electionList?.[0]?.image_path}${candidate.image}`,
+                  uri: `${currentElection?.image_path}${candidate.image}`,
                 }}
                 style={styles.image}
               />
@@ -124,12 +191,15 @@ const CandidateList = () => {
         <TouchableOpacity
           style={styles.voteButton}
           onPress={async () => {
-            if (selectedCandidates.length < 2) {
-              alert('Please select at least 2 candidates');
+            const minCount = parseInt(currentElection.min_count);
+            const maxCount = parseInt(currentElection.max_count);
+
+            if (selectedCandidates.length < minCount) {
+              alert(`Please select at least ${minCount} candidates`);
               return;
             }
-            if (selectedCandidates.length > 4) {
-              alert('You can select a maximum of 4 candidates');
+            if (selectedCandidates.length > maxCount) {
+              alert(`You can select a maximum of ${maxCount} candidates`);
               return;
             }
             const phoneNumber = userData?.[0]?.mobile;
@@ -145,14 +215,20 @@ const CandidateList = () => {
                     username: AUTH_USERNAME,
                     password: AUTH_PASSWORD,
                   },
-                }
+                },
               );
 
-              const data = response.data; 
+              const data = response.data;
 
               if (response.data.status === true) {
-                const selectedData = candidateList.filter(candidate => selectedCandidates.includes(candidate.id));
-                navigation.navigate('VoteVerification', { selectedCandidates: selectedData });
+                const selectedData = candidateList.filter(candidate =>
+                  selectedCandidates.includes(candidate.id),
+                );
+                console.log(selectedData);
+                nav.navigate('VoteVerification', {
+                  selectedCandidates: selectedData,
+                  electionId: currentElection?.id,
+                });
                 console.log('OTP sent:', data);
               } else {
                 alert(data.message || 'Failed to send OTP');
@@ -235,31 +311,36 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '48%',
-    height: '50%',
-    backgroundColor: '#F8F8F8',
+    backgroundColor: '#FFFFFF',
     borderRadius: ms(10),
     padding: s(10),
     marginBottom: vs(12),
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   selectedCard: {
     backgroundColor: '#D7A6FF',
   },
   image: {
     width: '100%',
-    height: vs(145),
-    resizeMode: 'stretch',
-    borderRadius: ms(8),
-    marginBottom: vs(8),
+    height: vs(140),
+    resizeMode: 'cover',
+    borderRadius: ms(10),
+    marginBottom: vs(10),
   },
   name: {
     fontSize: ms(14),
     fontWeight: '700',
     textAlign: 'center',
+    marginBottom: vs(4),
   },
   code: {
     fontSize: ms(12),
-    color: '#6759FF',
+    color: '#555',
     textAlign: 'center',
   },
   voteButton: {

@@ -14,42 +14,69 @@ import { s, vs, ms } from 'react-native-size-matters';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { BASE_URL, AUTH_USERNAME, AUTH_PASSWORD } from '../config/config';
 import { useSelector } from 'react-redux';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 const VoteVerification = () => {
-const electionList = useSelector(state => state?.electionList?.data || []);
+  const electionList = useSelector(state => state?.electionList?.data || []);
   console.log(electionList);
   const electionId = electionList?.[0]?.id;
   console.log(electionId);
-  const user = useSelector((state) => state.userData.otpVerificationResponse?.[0]);
+  const [user, setUser] = useState(null);
+
+  React.useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setUser(Array.isArray(parsed) ? parsed[0] : parsed);
+        }
+      } catch (error) {
+        console.error('Failed to load user from async storage:', error);
+      }
+    };
+
+    fetchUser();
+  }, []);
+
   console.log("user", user)
   console.log(user)
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const inputRefs = useRef([]);
   const navigation = useNavigation();
   const route = useRoute();
-  const candidates = route.params?.selectedCandidates || [];
+  const {
+    selectedCandidates = [],
+    selectedCandidateIds = [],
+    electionId: paramElectionId,
+    regionId,
+  } = route.params || {};
+
+  
+  // const candidates = route.params?.selectedCandidates || [];
+  const candidates = selectedCandidates;
   console.log('candidates', candidates);       
   
 const onSubmit = async () => {
     // Logging as requested before try block
     console.log('OTP:', otp);
-    console.log('Mobile:', user.mobile);
-    console.log('Election ID:', electionId);
-    console.log('Member ID:', user.member_code);
+    console.log('Mobile:', user?.mobile);
+    console.log('Election ID:', paramElectionId);
+    console.log('Member ID:', user?.member_code || '');
     console.log('Selected Candidates:', candidates);
     try {
-   const requestBody = {
-     mobile: user.mobile,
-     otp: otp.join(''),
-     election_id: electionId,
-     member_id: user.member_code,
-     candidate_ids: candidates.map(item => ({
-       candidate_ids: item.candidate_id.toString(),
-     })),
-   };
+      const requestBody = {
+        mobile: user?.mobile,
+        otp: otp.join(''),
+        election_id: paramElectionId,
+        member_id: user?.member_code || '',
+        candidate_ids: candidates.map(item => ({
+          candidate_ids: item.candidate_id.toString(),
+        })),
+      };
 
-   console.log('Request Body:', JSON.stringify(requestBody, null, 2));
+      console.log('Request Body:', JSON.stringify(requestBody, null, 2));
 
       const response = await axios.post(
         `${BASE_URL}/api/vote_submit`,
@@ -67,11 +94,14 @@ const onSubmit = async () => {
 
 
       const result = response.data;
-      console.log('Response:', result);
+      console.log(result);
       
 
       if (result.status === true) {
-        navigation.replace('VotingSuccess');
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'VotingSuccess', params: { voteResponse: result } }],
+        });
       } else {
         alert(result.message || 'Something went wrong');
       }

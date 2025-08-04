@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { BASE_URL, AUTH_USERNAME, AUTH_PASSWORD } from '../config/config';
 import {
@@ -82,8 +83,12 @@ const OtpPage = () => {
         },
       );
       console.log('OTP verification response:', response.data);
-      dispatch(setUserData(response.data.data));
       if (response.data.status === true) {
+        dispatch(setUserData(response.data.data));
+        await AsyncStorage.setItem('user', JSON.stringify(response.data.data));
+        const savedUser = await AsyncStorage.getItem('user');
+        console.warn('Saved user data:', savedUser);
+
         Alert.alert('Success', 'OTP verified', [
           {
             text: 'OK',
@@ -93,7 +98,7 @@ const OtpPage = () => {
       } else {
         Alert.alert('Failure', 'Invalid OTP')
       }
-    } catch {
+    } catch (error) {
       console.log(error)
     }
   }

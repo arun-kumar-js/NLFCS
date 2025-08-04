@@ -52,7 +52,9 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
 	<key>NSCameraUsageDescription</key>
-<string>We need access to your camera to scan ID CARD TO VERIFY.</string>
+<string>Camera access is required to scan documents</string>
+<key>NSPhotoLibraryUsageDescription</key>
+<string>Photo library access is required to save photos</string>
 	<key>UIAppFonts</key>
 <array>
 

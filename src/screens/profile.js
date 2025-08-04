@@ -1,10 +1,27 @@
-import { StyleSheet, Text, View, SafeAreaView, Image, TouchableOpacity } from 'react-native'
-import React from 'react'
-import { useSelector } from 'react-redux';
+import { StyleSheet, Text, View, SafeAreaView, Image, TouchableOpacity, ScrollView } from 'react-native'
+import React, { useEffect, useState } from 'react'
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 
 const profile = () => {
-  const user = useSelector(state => state.userData?.otpVerificationResponse?.[0]);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const storedUser = await AsyncStorage.getItem('user');
+        if (storedUser) {
+          const parsedUser = JSON.parse(storedUser);
+          setUser(Array.isArray(parsedUser) ? parsedUser[0] : parsedUser);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user from async storage:', error);
+      }
+    };
+
+    fetchUser();
+  }, []);
+
   const navigation = useNavigation();
   console.log(user)
   return (
@@ -15,56 +32,59 @@ const profile = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile</Text>
       </View>
-      <View style={styles.card}>
-        {user?.image && (
-          <Image
-            source={{ uri: `https://spider.org.in/nlfcs/uploads/${user?.image}` }}
-            style={styles.profileImage}
-          />
-        )}
-        <Text style={styles.name}>{user?.name}</Text>
-        <Text style={styles.info}>
-          <Text style={styles.label}>IC Number: </Text>
-          {user?.ic_number}
-        </Text>
-        <Text style={styles.info}>
-          <Text style={styles.label}>Mobile: </Text>
-          {user?.mobile}
-        </Text>
-        <Text style={styles.info}>
-          <Text style={styles.label}>Gender: </Text>
-          {user?.gender}
-        </Text>
-        <Text style={styles.info}>
-          <Text style={styles.label}>Address: </Text>
-          {user?.address}
-        </Text>
-        <Text style={styles.info}>
-          <Text style={styles.label}>Post Code: </Text>
-          {user?.post_code}
-        </Text>
-        <Text style={styles.info}>
-          <Text style={styles.label}>State: </Text>
-          {user?.state}
-        </Text>
-        <Text style={styles.info}>
-          <Text style={styles.label}>Region ID: </Text>
-          {user?.region_id}
-        </Text>
-      </View>
-      <TouchableOpacity
-        style={styles.logoutButton}
-        onPress={() => {
-          navigation.dispatch(
-            CommonActions.reset({
-              index: 0,
-              routes: [{ name: 'Login' }],
-            })
-          );
-        }}
-      >
-        <Text style={styles.logoutButtonText}>Logout</Text>
-      </TouchableOpacity>
+      <ScrollView contentContainerStyle={{ paddingBottom: 30 }}>
+        <View style={styles.card}>
+          {user?.image && (
+            <Image
+              source={{ uri: `https://spider.org.in/nlfcs/uploads/${user?.image}` }}
+              style={styles.profileImage}
+            />
+          )}
+          <Text style={styles.name}>{user?.name}</Text>
+          <Text style={styles.info}>
+            <Text style={styles.label}>IC Number: </Text>
+            {user?.ic_number}
+          </Text>
+          <Text style={styles.info}>
+            <Text style={styles.label}>Mobile: </Text>
+            {user?.mobile}
+          </Text>
+          <Text style={styles.info}>
+            <Text style={styles.label}>Gender: </Text>
+            {user?.gender}
+          </Text>
+          <Text style={styles.info}>
+            <Text style={styles.label}>Address: </Text>
+            {user?.address}
+          </Text>
+          <Text style={styles.info}>
+            <Text style={styles.label}>Post Code: </Text>
+            {user?.post_code}
+          </Text>
+          <Text style={styles.info}>
+            <Text style={styles.label}>State: </Text>
+            {user?.state}
+          </Text>
+          <Text style={styles.info}>
+            <Text style={styles.label}>Region ID: </Text>
+            {user?.region_id}
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={async () => {
+            await AsyncStorage.clear();
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: 'Login' }],
+              })
+            );
+          }}
+        >
+          <Text style={styles.logoutButtonText}>Logout</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </SafeAreaView>
   )
 }

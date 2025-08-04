@@ -15,23 +15,26 @@ const Timer = () => {
   const [timeLeft, setTimeLeft] = useState(null);
   const userData = useSelector(state => state.userData.otpVerificationResponse);
   console.log('userData', userData);
-  const region = userData?.[0]?.region_id;
-  console.log('region',);
+  const region = Array.isArray(userData) ? userData[0]?.region_id : userData?.region_id;
+  console.log('region', region);
   const startDate = regionData?.data?.[0]?.start_date;
-  console.log(startDate);
+  
+  const startTime = regionData?.data?.[0]?.start_time;
+  console.log('start time:', startTime);
     useEffect(() => {
-      if (region) {
-        timeout();
+      const regionId = Array.isArray(userData) ? userData[0]?.region_id : userData?.region_id;
+      if (regionId) {
+        timeout(regionId);
       }
-    }, [region]);
+    }, [userData]);
   
   
-  const timeout = async () => {
+  const timeout = async (regionId) => {
     try {
       const response = await axios.post(
         `${BASE_URL}/api/election_start_countdown`,
         {
-          region_id: region,
+          region_id: regionId,
         },
         {
           auth: {
@@ -59,6 +62,10 @@ const Timer = () => {
         setTimeLeft(0);
         setProgress(100);
         navigation.replace('Home');
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Home' }],
+        });
         return;
       }
 
@@ -72,6 +79,10 @@ const Timer = () => {
             setHasStarted(true);
             setProgress(100);
             navigation.replace('Home');
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Home' }],
+            });
             return 0;
           }
           const newProgress =
@@ -118,7 +129,15 @@ const Timer = () => {
       <Text style={styles.subtitle}>
         {hasStarted ? 'Voting Started' : 'Voting Yet to start'}
       </Text>
-      <Button title="Next" onPress={() => navigation.replace('Home')} />
+      <Button
+        title="Next"
+        onPress={() =>
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Home' }],
+          })
+        }
+      />
     </View>
   );
 };

@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Image } from 'react-native';
+import { StyleSheet, Text, View, Image ,TouchableOpacity} from 'react-native';
 import React from 'react';
 import { Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -24,9 +24,9 @@ const OnBoardingPage3 = () => {
             <Pressable onPress={() => navigation.goBack()}>
               <Text style={styles.backArrow}>{'←'}</Text>
             </Pressable>
-            <Pressable onPress={() => navigation.reolace("Timer")}>
-              <Text style={styles.skipText}>Skip</Text>
-            </Pressable>
+          <TouchableOpacity onPress={() => navigation.navigate("timer")}>
+                       <Text style={styles.skipText}>Skip</Text>
+                     </TouchableOpacity>
           </View>
 
           <View style={styles.imageContainer}>

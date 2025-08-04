@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setElectionList } from '../redux/slice/ElectionListSlice';
 import {
   StyleSheet,
@@ -18,12 +19,36 @@ import { BASE_URL, AUTH_USERNAME, AUTH_PASSWORD } from '../config/config';
 const Home = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch();
-  const [electionData, setElectionData] = useState();
+  const [electionData, setElectionData] = useState();// election list here 
   const [candidateList, setCandidateList] = useState([]);
-  const [chartData, setChartData] = useState([]);
-  const otpResponse = useSelector(
-    state => state.userData?.otpVerificationResponse,
-  );
+  const [chartData, setChartData] = useState({});
+  const [otpResponse, setOtpResponse] = useState(null);
+  const [voteResult, setVoteResult] = useState(null);
+
+  useEffect(() => {
+    const fetchOtpResponse = async () => {
+      try {
+        const storedOtp = await AsyncStorage.getItem('user');
+        if (storedOtp) {
+          const parsedOtp = JSON.parse(storedOtp);
+          setOtpResponse(parsedOtp);
+          console.log('Fetched otpResponse from async storage:', parsedOtp);
+        }
+
+        const storedVote = await AsyncStorage.getItem('vote_result');
+        if (storedVote) {
+          const parsedVote = JSON.parse(storedVote);
+          setVoteResult(parsedVote);
+          console.log('Fetched voteResult from async storage:', parsedVote);
+        }
+      } catch (error) {
+        console.error('Failed to fetch data from async storage:', error);
+      }
+    };
+
+    fetchOtpResponse();
+  }, []);
+
   console.log('otpResponse', otpResponse);
   console.log(otpResponse?.[0]?.id);
   console.log(otpResponse?.[0]?.region_id);
@@ -32,11 +57,10 @@ const Home = () => {
   );
  
   const voteStatus = electionListResult?.[0]?.vote_status;
-
+//console.log(voteStatus)
   useEffect(() => {
     if (otpResponse?.[0]?.id && otpResponse?.[0]?.region_id) {
       electionList();
-      generateChartData();
     }
   }, [otpResponse]);
 
@@ -63,19 +87,23 @@ const Home = () => {
       setElectionData(response.data.data);
       dispatch(setElectionList(response.data.data));
       setCandidateList(response.data?.data?.[0]?.canditates || []);
-      await generateChartData(response.data?.data?.[0]?.id);
+      // Fetch chart data for all elections
+      for (const election of response.data.data) {
+        await generateChartData(election.id);
+      }
     } catch (error) {
       console.error('Error fetching election list:', error);
     }
   };
 
-  const generateChartData = async electionId => {
+  const generateChartData = async (electionId) => {
     try {
       const response = await axios.post(
         `${BASE_URL}/api/voting_graph`,
         {
           member_id: otpResponse?.[0]?.id,
           region_id: otpResponse?.[0]?.region_id,
+          election_id: electionId,
         },
         {
           auth: {
@@ -85,24 +113,26 @@ const Home = () => {
           headers: {
             'Content-Type': 'application/json',
           },
-        },
+        }
       );
       const rawTimeSlots = response.data?.data?.[0]?.timeSlots || [];
-    
       const limitedTimeSlots = rawTimeSlots.slice(0, 15);
       const chartPoints = limitedTimeSlots.map(slot => ({
         time: slot.time,
         votes: slot.votes,
       }));
-      setChartData(chartPoints);
-      console.log(chartData);
+
+      setChartData(prev => ({
+        ...prev,
+        [electionId]: chartPoints
+      }));
     } catch (error) {
-      console.error('Error fetching chart data:', error);
+      console.error(`Error fetching chart data for election ${electionId}:`, error);
     }
   };
 
-  // Calculate maxVotes for chart Y-axis scaling (fallback to 1 if all are zero)
-  const maxVotes = Math.max(...chartData.map(d => d.votes), 1);
+
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -125,10 +155,12 @@ const Home = () => {
             </View>
           </View>
           <View style={styles.notification}>
-            <Image
-              source={require('../assets/images/bell.png')}
-              style={styles.bellIcon}
-            />
+            <TouchableOpacity onPress={() => navigation.navigate('Notification')}>
+              <Image
+                source={require('../assets/images/bell.png')}
+                style={styles.bellIcon}
+              />
+            </TouchableOpacity>
             <View style={styles.redDot}>
               <Text style={styles.dotText}>1</Text>
             </View>
@@ -139,141 +171,121 @@ const Home = () => {
           <TouchableOpacity style={styles.onGoingBtn}>
             <Text style={styles.onGoingText}>On Going</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.viewBtn}>
+         <TouchableOpacity
+            style={styles.viewBtn}
+            onPress={() => navigation.navigate('ViewResults')}
+          >
             <Text style={styles.viewText}>View Results</Text>
           </TouchableOpacity>
         </View>
         {/* Election Info */}
         <Text style={styles.title}>Koperasi NLFCS Berhad</Text>
         <Text style={styles.subtitle}>Reginal Gendral Meeting</Text>
-        <LinearGradient
-          colors={['#7555CE', '#8C9CF7']}
-          style={styles.card}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-        >
-          <View style={styles.candidatesRow}>
-            {candidateList?.slice(0, 4).map((candidate, i) => (
-              <View key={candidate.id}>
-                <Image
-                  source={{
-                    uri: `${electionData?.[0]?.image_path}${candidate.image}`,
-                  }}
-                  style={[
-                    styles.candidate,
-                    { marginLeft: i === 0 ? 0 : s(-10) },
-                  ]}
-                />
-              </View>
-            ))}
-            {candidateList.length > 4 && (
-              <View style={styles.moreBox}>
-                <Text style={styles.moreText}>
-                  +{candidateList.length - 4} more
+        {electionData?.map((election, index) => (
+          <LinearGradient
+            key={index}
+            colors={['#7555CE', '#8C9CF7']}
+            style={styles.card}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <View style={styles.candidatesRow}>
+              {election?.canditates?.slice(0, 4).map((candidate, i) => (
+                <View key={candidate.id}>
+                  <Image
+                    source={{
+                      uri: `${election?.image_path}${candidate.image}`,
+                    }}
+                    style={[
+                      styles.candidate,
+                      { marginLeft: i === 0 ? 0 : s(-10) },
+                    ]}
+                  />
+                </View>
+              ))}
+              {election?.canditates?.length > 4 && (
+                <View style={styles.moreBox}>
+                  <Text style={styles.moreText}>
+                    +{election?.canditates?.length - 4} more
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.label}>Candidates</Text>
+            <Text style={styles.date}>
+              Election starts at{' '}
+              {new Date(election?.start_date).toLocaleString('en-MY', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Kuala_Lumpur',
+              })}{' '}
+              (MYT)
+            </Text>
+            <Text style={styles.selection}>Committee Members Selection</Text>
+            <Text style={styles.region}>
+              {election?.region_name || 'Region'}
+            </Text>
+            <Text style={styles.label}>Voting ends at</Text>
+            <View style={{ flexDirection: 'row', paddingTop: 10, paddingLeft: 10 }}>
+              <View style={styles.timerBox}>
+                <Text style={[styles.timerText, { fontSize: 11, height: 20 }]}>
+                  🕒{' '}
+                  {(() => {
+                    const end = new Date(election?.end_date);
+                    const now = new Date();
+                    const diffMs = end - now;
+                    if (diffMs <= 0) return 'Voting ended';
+                    const hours = Math.floor(diffMs / (1000 * 60 * 60));
+                    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+                    return `${hours} hours ${minutes} minutes ${seconds} seconds`;
+                  })()}
                 </Text>
               </View>
-            )}
-          </View>
-          <Text style={styles.label}>Candidates</Text>
-          <Text style={styles.date}>
-            Election starts at{' '}
-            {new Date(electionData?.[0]?.start_date).toLocaleString('en-MY', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: true,
-              timeZone: 'Asia/Kuala_Lumpur',
-            })}{' '}
-            (MYT)
-          </Text>
-          <Text style={styles.selection}>Committee Members Selection</Text>
-          <Text style={styles.region}>
-            {electionData?.[0]?.region_name || 'Region'}
-          </Text>
-          <Text style={styles.label}>Voting ends at</Text>
-          <View
-            style={{ flexDirection: 'row', paddingTop: 10, paddingLeft: 10 }}
-          >
-            <View style={styles.timerBox}>
-              <Text style={[styles.timerText, { fontSize: 11, height: 20 }]}>
-                🕒{' '}
-                {(() => {
-                  const end = new Date(electionData?.[0]?.end_date);
-                  const now = new Date();
-                  const diffMs = end - now;
-                  if (diffMs <= 0) return 'Voting ended';
-                  const hours = Math.floor(diffMs / (1000 * 60 * 60));
-                  const minutes = Math.floor(
-                    (diffMs % (1000 * 60 * 60)) / (1000 * 60),
-                  );
-                  const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
-                  return `${hours} hours ${minutes} minutes ${seconds} seconds`;
-                })()}
-              </Text>
-            </View>
-            {voteStatus === 'voted' ? (
-              <View style={[styles.voteBtn, { fontSize: 10, width: 70 }]}>
-                <Text style={styles.voteText}>Voted</Text>
-              </View>
-            ) : (
               <TouchableOpacity
                 style={[styles.voteBtn, { fontSize: 10, width: 70 }]}
-                onPress={() => navigation.navigate('CandidateList')}
+                onPress={() => navigation.navigate('CandidateList', { electionId: election.id })}
               >
                 <Text style={styles.voteText}>Let’s Vote</Text>
               </TouchableOpacity>
-            )}
-          </View>
-        </LinearGradient>
-        {chartData.length > 0 && (
+            </View>
+          </LinearGradient>
+        ))}
+        {electionData?.map((election, index) => (
           <View
+            key={`chart-${index}`}
             style={{
               height: 300,
               padding: 16,
               backgroundColor: '#f8f9fa',
               borderRadius: 12,
+              marginTop: 16,
             }}
           >
-            {/* Top Row: Voting Progress title, total votes, and Go to Map */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <Text
-                style={{
-                  fontSize: 18,
-                  fontWeight: 'bold',
-                  marginBottom: 0,
-                  textAlign: 'center',
-                }}
-              >
+              <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 0, textAlign: 'center' }}>
                 Voting Progress
               </Text>
               <View style={{ alignItems: 'flex-end' }}>
                 <Text style={{ fontSize: 12, fontWeight: '600', color: '#333' }}>
-                  Total Votes: {chartData.reduce((sum, item) => sum + item.votes, 0)}
+                  Total Votes: {(chartData[election.id] || []).reduce((sum, item) => sum + item.votes, 0)}
                 </Text>
-               
               </View>
             </View>
-
-            {/* Chart Container */}
             <View style={{ flexDirection: 'row', height: 200, position: 'relative' }}>
-              {/* Y-Axis */}
-              <View
-                style={{
-                  width: 60,
-                  justifyContent: 'space-between',
-                  paddingRight: 10,
-                }}
-              >
-                {['400', '300', '200', '100'].map((label, index) => (
+              <View style={{ width: 60, justifyContent: 'space-between', paddingRight: 10 }}>
+                {['400', '300', '200', '100'].map((label, idx) => (
                   <Text
-                    key={index}
+                    key={idx}
                     style={{
                       fontSize: 12,
-                      color: index === 0 ? '#444' : '#666',
+                      color: idx === 0 ? '#444' : '#666',
                       textAlign: 'right',
-                      fontWeight: index === 0 ? '700' : '600',
+                      fontWeight: idx === 0 ? '700' : '600',
                       letterSpacing: 0.15,
                     }}
                   >
@@ -281,8 +293,6 @@ const Home = () => {
                   </Text>
                 ))}
               </View>
-
-              {/* Y-axis grid lines */}
               <View
                 style={{
                   position: 'absolute',
@@ -306,8 +316,6 @@ const Home = () => {
                   />
                 ))}
               </View>
-
-              {/* Chart Bars */}
               <View
                 style={{
                   flex: 1,
@@ -318,25 +326,19 @@ const Home = () => {
                   zIndex: 2,
                 }}
               >
-                {[...Array(12)].map((_, index) => {
-                  // If chartData has fewer than 12, fill with 0
-                  const item = chartData[index] || { votes: 0 };
-                  // Normalize bar height to a max of 400
+                {[...Array(12)].map((_, idx) => {
+                  const item = (chartData[election.id] || [])[idx] || { votes: 0 };
                   const barHeight = Math.min(item.votes / 400, 1) * 160;
-                  // Dynamic bar color: deeper purple for higher votes
                   const minLight = 70, maxLight = 53;
                   const lightness =
                     400 === 0
                       ? maxLight
                       : maxLight + (minLight - maxLight) * (1 - Math.min(item.votes / 400, 1));
                   const barColor = `hsl(260, 65%, ${lightness}%)`;
-                  // Assign time label: hide for first index, else show index+1
-                  const timeLabel = index === 0 ? '' : `${index + 1}`;
-                  // Skip rendering time label if timeLabel is "0"
-                  // (But with current logic, index starts from 0, so timeLabel is "" for index 0)
+                  const timeLabel = idx === 0 ? '' : `${idx + 1}`;
                   return (
                     <View
-                      key={index}
+                      key={idx}
                       style={{
                         flex: 1,
                         alignItems: 'center',
@@ -345,7 +347,6 @@ const Home = () => {
                         marginBottom: 6,
                       }}
                     >
-                      {/* Bar */}
                       <View
                         style={{
                           width: 20,
@@ -360,7 +361,6 @@ const Home = () => {
                           elevation: 2,
                         }}
                       />
-                      {/* Vote count on bar */}
                       {item.votes > 0 && (
                         <Text
                           style={{
@@ -375,7 +375,6 @@ const Home = () => {
                           {item.votes}
                         </Text>
                       )}
-                      {/* Time label */}
                       {timeLabel !== '0' && (
                         <Text
                           style={{
@@ -394,8 +393,6 @@ const Home = () => {
                 })}
               </View>
             </View>
-
-            {/* Legend */}
             <View
               style={{
                 flexDirection: 'row',
@@ -404,11 +401,11 @@ const Home = () => {
                 paddingHorizontal: 10,
               }}
             >
-              <Text style={{ fontSize: 12, color: '#666' }}>Time (Hours)</Text>
               <Text style={{ fontSize: 12, color: '#666' }}>Vote Count</Text>
+              <Text style={{ fontSize: 12, color: '#666' }}>Time (Hours)</Text>
             </View>
           </View>
-        )}
+        ))}
       </ScrollView>
     </SafeAreaView>
   );
@@ -444,7 +441,7 @@ const styles = StyleSheet.create({
   name: { fontSize: ms(16), fontWeight: '700' },
   role: { fontSize: ms(12), color: '#777' },
   notification: { position: 'relative' },
-  bellIcon: { width: s(20), height: vs(20), marginRight: s(12) },
+  bellIcon: { width: s(20), height: vs(20), marginRight: s(11) },
   redDot: {
     position: 'absolute',
     top: vs(-7),

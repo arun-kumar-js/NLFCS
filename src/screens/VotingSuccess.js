@@ -1,14 +1,38 @@
 import React, { useEffect, useState, useRef } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { StyleSheet, Text, View, TouchableOpacity, Animated } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { s, vs, ms } from 'react-native-size-matters';
 
-const VotingSuccess = () => {
+const VotingSuccess = ({ route }) => {
   const navigation = useNavigation();
 
+  const { voteResponse } = route.params || {};
+  const endDate = voteResponse?.end_date;
+  
+  console.log(endDate);
+  useEffect(() => {
+    if (voteResponse) {
+    
+      const calculateRemainingTime = () => {
+        if (endDate) {
+          const end = new Date(endDate).getTime();
+          const now = new Date().getTime();
+          const diff = Math.max(0, Math.floor((end - now) / 1000));
+          setRemainingTime(diff);
+        }
+      };
+
+      calculateRemainingTime();
+    
+    } else {
+      console.warn('Vote response missing!');
+    }
+  }, [voteResponse]);
+
   // Countdown timer state and animation
-  const [remainingTime, setRemainingTime] = useState(115822); // 32:10:22 in seconds
+  const [remainingTime, setRemainingTime] = useState(0);
   const animatedValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -16,11 +40,13 @@ const VotingSuccess = () => {
       setRemainingTime((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
 
-    Animated.timing(animatedValue, {
-      toValue: 1,
-      duration: remainingTime * 1000,
-      useNativeDriver: false,
-    }).start();
+    if (remainingTime > 0) {
+      Animated.timing(animatedValue, {
+        toValue: 1,
+        duration: remainingTime * 1000,
+        useNativeDriver: false,
+      }).start();
+    }
 
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -49,7 +75,16 @@ const VotingSuccess = () => {
         <Text style={styles.timerText}>{formatTime(remainingTime)}</Text>
       </Animated.View>
 
-      <TouchableOpacity style={styles.button} onPress={() => navigation.replace('Home')}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => {
+          navigation.replace('Home');
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Home' }],
+          });
+        }}
+      >
         <Text style={styles.buttonText}>GO to Home</Text>
       </TouchableOpacity>
 

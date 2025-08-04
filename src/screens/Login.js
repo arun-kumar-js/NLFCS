@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { BASE_URL, AUTH_USERNAME, AUTH_PASSWORD } from '../config/config';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Text,
   View,
@@ -21,6 +22,25 @@ const Login = () => {
   const dispatch = useDispatch();
   const [icNumber, setIcNumber] = useState('');
 
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('user');
+        if (userData) {
+          const parsedData = JSON.parse(userData);
+          console.log('User data from async storage:', parsedData);
+          navigation.replace('Home');
+        } else {
+          console.log('No user data found in async storage.');
+        }
+      } catch (error) {
+        console.log('Error fetching user data:', error);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
   const handleNext = async () => {
     try {
       const response = await axios.post(
@@ -38,7 +58,7 @@ const Login = () => {
       console.log('API Response:', response.data);
       if (response.data.status === true) {
         dispatch(setIcData({ ...response.data, ic_number: icNumber }));
-        navigation.navigate('MobileNumVerify');
+        navigation.navigate('CameraScreen', { icNumber });
       } else {
         Alert.alert('Verification Failed', 'Invalid IC number or not found.');
       }
@@ -47,6 +67,8 @@ const Login = () => {
       Alert.alert('API Error:', error);
     }
   };
+
+  
 
   return (
     <SafeAreaView style={styles.container}>
