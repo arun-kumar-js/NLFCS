@@ -8,18 +8,18 @@ import TextRecognition from '@react-native-ml-kit/text-recognition';
 
 const extractNumbersFromImage = async imagePath => {
   try {
-    console.log('Processing image for IC number extraction:', imagePath);
+    //console.log('Processing image for IC number extraction:', imagePath);
 
     // Use real OCR with TensorFlow/ML Kit
     const ocrResult = await performRealOCR(imagePath);
 
     if (ocrResult.success) {
-      console.log('OCR Text extracted:', ocrResult.text);
+      //console.log('OCR Text extracted:', ocrResult.text);
 
       // Extract 12-digit IC number from OCR text
       const icNumber = extractICNumberFromText(ocrResult.text);
 
-      console.log('IC Number extracted:', icNumber);
+      //console.log('IC Number extracted:', icNumber);
 
       return {
         success: true,
@@ -30,7 +30,7 @@ const extractNumbersFromImage = async imagePath => {
           : 'No 12-digit IC number found in image',
       };
     } else {
-      console.log('OCR failed:', ocrResult.message);
+      //console.log('OCR failed:', ocrResult.message);
       return {
         success: false,
         numbers: [],
@@ -52,8 +52,8 @@ const extractNumbersFromImage = async imagePath => {
 // Perform real OCR using TensorFlow/ML Kit
 const performRealOCR = async imagePath => {
   try {
-    console.log('Starting real OCR with TensorFlow/ML Kit...');
-    console.log('Image path:', imagePath);
+    //console.log('Starting real OCR with TensorFlow/ML Kit...');
+    //console.log('Image path:', imagePath);
 
     // Check if TextRecognition is available
     if (!TextRecognition) {
@@ -63,10 +63,10 @@ const performRealOCR = async imagePath => {
     // Use ML Kit Text Recognition for real OCR
     const result = await TextRecognition.recognize(imagePath);
 
-    console.log('OCR completed!');
-    console.log('Extracted text:', result.text);
-    console.log('Text blocks:', result.blocks);
-    console.log('Result object:', result);
+    //console.log('OCR completed!');
+    //console.log('Extracted text:', result.text);
+    //console.log('Text blocks:', result.blocks);
+    //console.log('Result object:', result);
 
     if (result && result.text && result.text.trim()) {
       return {
@@ -94,7 +94,7 @@ const performRealOCR = async imagePath => {
     });
 
     // Fallback to simulated OCR if real OCR fails
-    console.log('Falling back to simulated OCR...');
+    //console.log('Falling back to simulated OCR...');
     const simulatedText = simulateOCRText(imagePath);
 
     return {
@@ -109,7 +109,7 @@ const performRealOCR = async imagePath => {
 
 // Extract 12-digit IC number from OCR text
 const extractICNumberFromText = text => {
-  console.log('Extracting IC number from text:', text);
+  //console.log('Extracting IC number from text:', text);
 
   // Look for exact 12-digit numbers
   const exact12DigitRegex = /\b\d{12}\b/g;
@@ -117,7 +117,7 @@ const extractICNumberFromText = text => {
 
   if (exactMatches && exactMatches.length > 0) {
     const icNumber = parseInt(exactMatches[0], 10);
-    console.log('Found exact 12-digit IC number:', icNumber);
+    //console.log('Found exact 12-digit IC number:', icNumber);
     return icNumber;
   }
 
@@ -134,7 +134,7 @@ const extractICNumberFromText = text => {
       const cleanNumber = matches[0].replace(/[- ]/g, '');
       if (cleanNumber.length === 12) {
         const icNumber = parseInt(cleanNumber, 10);
-        console.log('Found IC number with pattern:', icNumber);
+        //console.log('Found IC number with pattern:', icNumber);
         return icNumber;
       }
     }
@@ -145,12 +145,12 @@ const extractICNumberFromText = text => {
   for (const number of allNumbers) {
     if (number.length === 12) {
       const icNumber = parseInt(number, 10);
-      console.log('Found 12-digit number in text:', icNumber);
+      //console.log('Found 12-digit number in text:', icNumber);
       return icNumber;
     }
   }
 
-  console.log('No IC number found in text');
+  //console.log('No IC number found in text');
   return null;
 };
 
@@ -188,7 +188,7 @@ const simulateOCRText = imagePath => {
     ${pathNumbers.join(' ')}
   `;
 
-  console.log('Simulated OCR text:', ocrText);
+  //console.log('Simulated OCR text:', ocrText);
   return ocrText;
 };
 
@@ -208,15 +208,15 @@ const formatExtractedNumbers = numbers => {
 // Test function to verify ML Kit integration
 const testMLKitIntegration = async () => {
   try {
-    console.log('Testing ML Kit Text Recognition integration...');
+    //console.log('Testing ML Kit Text Recognition integration...');
 
     if (!TextRecognition) {
       console.error('TextRecognition module not available');
       return false;
     }
 
-    console.log('TextRecognition module is available');
-    console.log('TextRecognition object:', TextRecognition);
+    //console.log('TextRecognition module is available');
+    //console.log('TextRecognition object:', TextRecognition);
 
     return true;
   } catch (error) {

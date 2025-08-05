@@ -1859,6 +1859,8 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
+  - react-native-splash-screen (3.3.0):
+    - React-Core
   - React-NativeModulesApple (0.80.2):
     - boost
     - DoubleConversion
@@ -2756,6 +2758,7 @@ DEPENDENCIES:
   - react-native-camera (from `../node_modules/react-native-camera`)
   - react-native-pager-view (from `../node_modules/react-native-pager-view`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
+  - react-native-splash-screen (from `../node_modules/react-native-splash-screen`)
   - React-NativeModulesApple (from `../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios`)
   - React-oscompat (from `../node_modules/react-native/ReactCommon/oscompat`)
   - React-perflogger (from `../node_modules/react-native/ReactCommon/reactperflogger`)
@@ -2913,6 +2916,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-pager-view"
   react-native-safe-area-context:
     :path: "../node_modules/react-native-safe-area-context"
+  react-native-splash-screen:
+    :path: "../node_modules/react-native-splash-screen"
   React-NativeModulesApple:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios"
   React-oscompat:
@@ -3062,6 +3067,7 @@ SPEC CHECKSUMS:
   react-native-camera: 079d80421f0572d6b4e836908114d614d0adb553
   react-native-pager-view: 6e60acfd433ace1a7a1af75bd80b619a41478640
   react-native-safe-area-context: 68d1363b8354472a961aa6861ba8451beaf9a810
+  react-native-splash-screen: 95994222cc95c236bd3cdc59fe45ed5f27969594
   React-NativeModulesApple: 37c08c3c54db55854de816b0df0f3683832be35a
   React-oscompat: 56d6de59f9ae95cd006a1c40be2cde83bc06a4e1
   React-perflogger: 4008bd05a8b6c157b06608c0ea0b8bd5d9c5e6c9

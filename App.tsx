@@ -22,7 +22,8 @@ import Notification from './src/screens/Notificaton';
 import OnBoardingPage1 from './src/screens/OnBoardingPage1';
 import OnBoardingPage2 from './src/screens/OnBoardingPage2';
 import OnBoardingPage3 from './src/screens/OnBoardingPage3';
-import ICScanScreen from './src/screens/IcScan';
+
+import ViewResultsPages from './src/screens/ViewResultsPages';
 
 const Stack = createNativeStackNavigator();
 
@@ -48,7 +49,7 @@ export default function App() {
           <Stack.Screen name="VoteVerification" component={VoteVerification} />
           <Stack.Screen name="VotingSuccess" component={VotingSuccess} />
           <Stack.Screen name="profile" component={profile} />
-
+          <Stack.Screen name="ViewResultsPages" component={ViewResultsPages} />
           <Stack.Screen
             name="ViewResults"
             component={ViewResults}

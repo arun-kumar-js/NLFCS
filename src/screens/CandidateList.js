@@ -26,7 +26,7 @@ const CandidateList = ({ navigation, route }) => {
   const [ctionlist,setElectionList]=useState()
   console.log('userData', userData);
   const region_id = userData?.[0]?.region_id;
-  const member_id = userData?.[0]?.member_code;
+  const member_id = userData?.[0]?.id;
   console.log(region_id, member_id);
   // If navigation is not passed as prop, fallback to hook (for backward compatibility)
   const nav = navigation || useNavigation();

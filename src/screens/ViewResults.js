@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -7,11 +8,10 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import { s, vs, ms } from 'react-native-size-matters';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { BASE_URL, AUTH_USERNAME, AUTH_PASSWORD } from '../config/config';
-import { s, vs, ms } from 'react-native-size-matters';
 import { useNavigation } from '@react-navigation/native';
 
 const ViewResults = () => {
@@ -88,30 +88,43 @@ const region_id =
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {electionResults.map((item, index) => (
-          <View key={index} style={styles.card}>
-            <Image
-              source={{ uri: imagePath + item.image }}
-              style={styles.image}
-              resizeMode="stretch"
-            />
-            <Text style={styles.infoText}>
-              <Text style={styles.label}>Name:</Text> {item.name}
-            </Text>
-            <Text style={styles.infoText}>
-              <Text style={styles.label}>Election ID:</Text> {item.election_id}
-            </Text>
-            <Text style={styles.infoText}>
-              <Text style={styles.label}>Vote Count:</Text> {item.vote_count}
-            </Text>
-            <Text style={styles.infoText}>
-              <Text style={styles.label}>Member Code:</Text> {item.member_code}
-            </Text>
-            <Text style={styles.infoText}>
-              <Text style={styles.label}>IC Number:</Text> {item.ic_number}
-            </Text>
-          </View>
-        ))}
+        {electionResults.map((item, index) => {
+          const isClosed = new Date(item.end_date) < new Date();
+          return (
+          <TouchableOpacity
+            key={index}
+            style={styles.card}
+            onPress={() =>
+              navigation.navigate('ViewResultsPages', { result: item })
+            }
+          >
+            <View style={{flexDirection:"row",alignItems:"center",justifyContent:"space-between"}}>
+              <View style={styles.cardContent}>
+                <Text style={styles.headingText}>{item.name}</Text>
+                <Text style={styles.infoText}>
+                 
+                  {item.region_name}
+                </Text>
+
+                <Text style={styles.infoText}>
+                  <Text style={styles.label}>Start: </Text>
+                  {item.start_date}
+                </Text>
+                <Text style={styles.infoText}>
+                  <Text style={styles.label}>End: </Text>
+                  {item.end_date}
+                </Text>
+                <Text style={{ color: isClosed ? 'red' : 'green', fontWeight: 'bold' }}>
+                  {isClosed ? 'Closed' : 'Live'}
+                </Text>
+              </View>
+              <View>
+                <Text style={styles.arrowText}>{'>'}</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+          )
+        })}
       </ScrollView>
     </SafeAreaView>
   );
@@ -140,15 +153,17 @@ const styles = StyleSheet.create({
   card: {
     marginVertical: vs(10),
     padding: s(15),
-    backgroundColor: '#f9f9f9',
-    borderRadius: ms(10),
-    borderWidth: 1,
-    borderColor: '#ddd',
+    backgroundColor: '#ffffff',
+    borderRadius: ms(12),
+    borderWidth: 0,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
     shadowOpacity: 0.1,
-    shadowRadius: ms(4),
-    elevation: 3,
+    shadowRadius: ms(6),
+    elevation: 5,
   },
   image: {
     width: ms(100),
@@ -163,6 +178,22 @@ const styles = StyleSheet.create({
     marginVertical: vs(2),
   },
   label: {
+    fontWeight: 'bold',
+  },
+  cardContent: {
+    paddingVertical: vs(10),
+    paddingHorizontal: s(10),
+  },
+  headingText: {
+    fontSize: ms(18),
+    fontWeight: 'bold',
+
+    marginBottom: vs(6),
+    color: '#000',
+  },
+  arrowText: {
+    fontSize: ms(22),
+    color: '#6A00BF',
     fontWeight: 'bold',
   },
 });

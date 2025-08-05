@@ -24,6 +24,7 @@ const Home = () => {
   const [chartData, setChartData] = useState({});
   const [otpResponse, setOtpResponse] = useState(null);
   const [voteResult, setVoteResult] = useState(null);
+  const [totalVotesByElection, setTotalVotesByElection] = useState({});
 
   useEffect(() => {
     const fetchOtpResponse = async () => {
@@ -47,6 +48,7 @@ const Home = () => {
     };
 
     fetchOtpResponse();
+    electionList();
   }, []);
 
   console.log('otpResponse', otpResponse);
@@ -87,16 +89,16 @@ const Home = () => {
       setElectionData(response.data.data);
       dispatch(setElectionList(response.data.data));
       setCandidateList(response.data?.data?.[0]?.canditates || []);
-      // Fetch chart data for all elections
+      // Fetch chart data for all elections, passing vote_count to generateChartData
       for (const election of response.data.data) {
-        await generateChartData(election.id);
+        await generateChartData(election.id, election.vote_count);
       }
     } catch (error) {
       console.error('Error fetching election list:', error);
     }
   };
 
-  const generateChartData = async (electionId) => {
+  const generateChartData = async (electionId, voteCount) => {
     try {
       const response = await axios.post(
         `${BASE_URL}/api/voting_graph`,
@@ -115,12 +117,20 @@ const Home = () => {
           },
         }
       );
+      console.log('response', response.data);
+      // Use voteCount directly for total votes
+      setTotalVotesByElection(prev => ({
+        ...prev,
+        [electionId]: voteCount,
+      }));
       const rawTimeSlots = response.data?.data?.[0]?.timeSlots || [];
       const limitedTimeSlots = rawTimeSlots.slice(0, 15);
       const chartPoints = limitedTimeSlots.map(slot => ({
         time: slot.time,
         votes: slot.votes,
       }));
+
+      console.log(`Chart data for election ${electionId}:`, chartPoints);
 
       setChartData(prev => ({
         ...prev,
@@ -181,6 +191,13 @@ const Home = () => {
         {/* Election Info */}
         <Text style={styles.title}>Koperasi NLFCS Berhad</Text>
         <Text style={styles.subtitle}>Reginal Gendral Meeting</Text>
+        {/* Log the first and second election cards before rendering cards */}
+        {(() => {
+          const firstElection = electionData?.[0];
+          const secondElection = electionData?.[1];
+      
+          return null;
+        })()}
         {electionData?.map((election, index) => (
           <LinearGradient
             key={index}
@@ -246,11 +263,18 @@ const Home = () => {
                   })()}
                 </Text>
               </View>
-              <TouchableOpacity
+            <TouchableOpacity
                 style={[styles.voteBtn, { fontSize: 10, width: 70 }]}
-                onPress={() => navigation.navigate('CandidateList', { electionId: election.id })}
+                disabled={election.vote_status === 'voted'}
+                onPress={() => {
+                  if (election.vote_status !== 'voted') {
+                    navigation.navigate('CandidateList', { electionId: election.id });
+                  }
+                }}
               >
-                <Text style={styles.voteText}>Let’s Vote</Text>
+                <Text style={styles.voteText}>
+                  {election.vote_status === 'voted' ? 'Voted' : 'Let’s Vote'}
+                </Text>
               </TouchableOpacity>
             </View>
           </LinearGradient>
@@ -272,7 +296,7 @@ const Home = () => {
               </Text>
               <View style={{ alignItems: 'flex-end' }}>
                 <Text style={{ fontSize: 12, fontWeight: '600', color: '#333' }}>
-                  Total Votes: {(chartData[election.id] || []).reduce((sum, item) => sum + item.votes, 0)}
+                  Total Votes: {totalVotesByElection[election.id] ?? 0}
                 </Text>
               </View>
             </View>
@@ -328,12 +352,13 @@ const Home = () => {
               >
                 {[...Array(12)].map((_, idx) => {
                   const item = (chartData[election.id] || [])[idx] || { votes: 0 };
-                  const barHeight = Math.min(item.votes / 400, 1) * 160;
+                  const totalVotes = election.vote_count || 1;
+                  const barHeight = Math.min(item.votes / totalVotes, 1) * 160;
                   const minLight = 70, maxLight = 53;
                   const lightness =
-                    400 === 0
+                    totalVotes === 0
                       ? maxLight
-                      : maxLight + (minLight - maxLight) * (1 - Math.min(item.votes / 400, 1));
+                      : maxLight + (minLight - maxLight) * (1 - Math.min(item.votes / totalVotes, 1));
                   const barColor = `hsl(260, 65%, ${lightness}%)`;
                   const timeLabel = idx === 0 ? '' : `${idx + 1}`;
                   return (
@@ -483,8 +508,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     marginBottom: vs(5),
-    width: 350,
-    height: 269,
+    width: s(310),
+    height: vs(250),
   },
   candidatesRow: {
     flexDirection: 'row',

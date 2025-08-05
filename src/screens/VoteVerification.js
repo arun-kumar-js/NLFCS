@@ -63,14 +63,14 @@ const onSubmit = async () => {
     console.log('OTP:', otp);
     console.log('Mobile:', user?.mobile);
     console.log('Election ID:', paramElectionId);
-    console.log('Member ID:', user?.member_code || '');
+    console.log('Member ID:', user?.id || '');
     console.log('Selected Candidates:', candidates);
     try {
       const requestBody = {
         mobile: user?.mobile,
         otp: otp.join(''),
         election_id: paramElectionId,
-        member_id: user?.member_code || '',
+        member_id: user?.id || '',
         candidate_ids: candidates.map(item => ({
           candidate_ids: item.candidate_id.toString(),
         })),

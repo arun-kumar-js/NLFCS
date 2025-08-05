@@ -20,16 +20,19 @@ import {
   testMLKitIntegration,
 } from '../utils/ocrHelperRN';
 
-const CameraScreen = ({ route }) => {
+const CameraScreen = ({ route, navigation }) => {
   const { icNumber: icParam } = route?.params || {};
   const [hasPermission, setHasPermission] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const [capturedImage, setCapturedImage] = useState(null);
   const [extractedNumbers, setExtractedNumbers] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const[icNumber,setIcNumber]=useState()
+  const [icNumber, setIcNumber] = useState();
+  const rawicnumber = extractedNumbers[0]
+
+ 
   const devices = useCameraDevices();
-  
+
   const device =
     devices.back ||
     (devices && Object.values(devices).find(d => d && d.position === 'back'));
@@ -110,7 +113,6 @@ const CameraScreen = ({ route }) => {
 
       // Use OCR helper to extract numbers from image
       const result = await extractNumbersFromImage(imagePath);
-    
 
       console.log('OCR processing result:', result);
 
@@ -118,28 +120,41 @@ const CameraScreen = ({ route }) => {
         const formattedNumbers = formatExtractedNumbers(result.numbers);
         setExtractedNumbers(formattedNumbers);
 
-        if (formattedNumbers[0] === icNumber) {
-          navigation.navigate('MobileNumberVerify', { icNumber });
+        const extractedIC = formattedNumbers?.[0] || '';
+        const normalize = str =>
+          typeof str === 'string' || typeof str === 'number'
+            ? str.toString().replace(/\D/g, '').trim().normalize('NFKC')
+            : '';
+        const icFromParam = icParam || icNumber;
+        const cleanedExtractedIC = normalize(extractedIC);
+        const cleanedIcWithoutDashes = normalize(icFromParam);
+
+        console.log('Extracted IC:', cleanedExtractedIC);
+        console.log('IC from Params:', cleanedIcWithoutDashes);
+
+        if (!cleanedIcWithoutDashes || !cleanedExtractedIC) {
+          Alert.alert('Error', 'Missing IC number for comparison.');
+          return;
+        }
+console.log(cleanedExtractedIC);
+        if (cleanedExtractedIC === cleanedIcWithoutDashes) {
+          console.log('✅ IC Match — navigating...');
+          navigation.navigate('MobileNumVerify', {
+            icNumber: cleanedExtractedIC,
+          });
         } else {
+          console.log('❌ IC Mismatch');
           Alert.alert('Mismatch', 'IC number does not match. Please try again.');
         }
       } else {
-        console.log('OCR failed:', result.message);
-        setExtractedNumbers([]);
-       
+        Alert.alert('Error', 'Failed to extract numbers from the image.');
       }
     } catch (error) {
-      console.error('Error processing image for IC number:', error);
-      setExtractedNumbers([]);
-      Alert.alert('Error', 'Failed to process image. Please try again.');
+      //console.error('Error processing image:', error);
+     // Alert.alert('Error', 'Failed to process image. Please try again.');
     }
   };
-
-  if (extractedNumbers === icNumber) {
-  navigation.navigate("")
-}
-
-
+   
 
   const toggleCamera = () => {
     setIsActive(!isActive);
@@ -151,10 +166,39 @@ const CameraScreen = ({ route }) => {
   };
 
   const getNumberLabel = (index, number) => {
-    const labels = [
-      'Ic Number'
-    ];
+    const labels = ['Ic Number'];
     return labels[index] || `Number ${index + 1}`;
+  };
+
+  // Handle Submit: compare IC numbers and navigate or alert
+  const handleSubmit = () => {
+    const normalize = str =>
+      typeof str === 'string' || typeof str === 'number'
+        ? str.toString().replace(/\D/g, '').trim().normalize('NFKC')
+        : '';
+
+    const extractedRaw = extractedNumbers?.[0];
+    if (!extractedRaw) {
+      Alert.alert('Error', 'No IC number extracted from image.');
+      return;
+    }
+
+    const extractedIC = normalize(extractedRaw);
+    const paramIC = normalize(icParam || icNumber);
+
+    console.log('Extracted IC:', extractedIC);
+    console.log('Param IC:', paramIC);
+//console.log('OCR processing result:', result.number[0]);
+    if (!paramIC) {
+      Alert.alert('Error', 'IC number from params is missing.');
+      return;
+    }
+
+    if (extractedIC === paramIC) {
+      navigation.navigate('MobileNumberVerify', { icNumber: extractedIC });
+    } else {
+      Alert.alert('Mismatch', 'IC number does not match. Please try again.');
+    }
   };
 
   const requestPermission = async () => {
@@ -275,6 +319,9 @@ const CameraScreen = ({ route }) => {
           <View style={styles.imageControls}>
             <TouchableOpacity style={styles.retakeButton} onPress={retakePhoto}>
               <Text style={styles.retakeButtonText}>Retake Photo</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+              <Text style={styles.submitButtonText}>Submit</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -480,6 +527,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   retakeButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  submitButton: {
+    backgroundColor: '#6A00BF',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  submitButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
