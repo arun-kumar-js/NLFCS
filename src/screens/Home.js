@@ -25,6 +25,23 @@ const Home = () => {
   const [otpResponse, setOtpResponse] = useState(null);
   const [voteResult, setVoteResult] = useState(null);
   const [totalVotesByElection, setTotalVotesByElection] = useState({});
+  const [remainingTimes, setRemainingTimes] = useState({});
+  // Dynamic countdown for each election
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setRemainingTimes(prev => {
+        const updated = {};
+        electionData?.forEach(election => {
+          const end = new Date(election.end_date).getTime();
+          const now = new Date().getTime();
+          const diff = Math.max(0, end - now);
+          updated[election.id] = diff;
+        });
+        return updated;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [electionData]);
 
   useEffect(() => {
     const fetchOtpResponse = async () => {
@@ -248,32 +265,37 @@ const Home = () => {
             </Text>
             <Text style={styles.label}>Voting ends at</Text>
             <View style={{ flexDirection: 'row', paddingTop: 10, paddingLeft: 10 }}>
-              <View style={styles.timerBox}>
-                <Text style={[styles.timerText, { fontSize: 11, height: 20 }]}>
-                  🕒{' '}
-                  {(() => {
-                    const end = new Date(election?.end_date);
-                    const now = new Date();
-                    const diffMs = end - now;
-                    if (diffMs <= 0) return 'Voting ended';
-                    const hours = Math.floor(diffMs / (1000 * 60 * 60));
-                    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-                    const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
-                    return `${hours} hours ${minutes} minutes ${seconds} seconds`;
-                  })()}
-                </Text>
-              </View>
+            <View style={styles.timerBox}>
+              <Text style={[styles.timerText, { fontSize: 11, height: 20 }]}>
+                🕒{' '}
+                {(() => {
+                  const diffMs = remainingTimes[election.id] ?? 0;
+                  if (diffMs <= 0) return 'Voting ended';
+                  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+                  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                  const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+                  return `${hours} hours ${minutes} minutes ${seconds} seconds`;
+                })()}
+              </Text>
+            </View>
             <TouchableOpacity
                 style={[styles.voteBtn, { fontSize: 10, width: 70 }]}
-                disabled={election.vote_status === 'voted'}
+                disabled={new Date(election.end_date) < new Date() || election.vote_status === 'voted'}
                 onPress={() => {
-                  if (election.vote_status !== 'voted') {
+                  if (
+                    election.vote_status !== 'voted' &&
+                    new Date(election.end_date) >= new Date()
+                  ) {
                     navigation.navigate('CandidateList', { electionId: election.id });
                   }
                 }}
               >
                 <Text style={styles.voteText}>
-                  {election.vote_status === 'voted' ? 'Voted' : 'Let’s Vote'}
+                  {new Date(election.end_date) < new Date()
+                    ? 'Closed'
+                    : election.vote_status === 'voted'
+                      ? 'Voted'
+                      : 'Let’s Vote'}
                 </Text>
               </TouchableOpacity>
             </View>

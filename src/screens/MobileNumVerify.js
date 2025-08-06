@@ -10,118 +10,115 @@ import {
   StyleSheet,
   Image,
   SafeAreaView,
-  Pressable,Alert
+  Pressable,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+  ScrollView,
 } from 'react-native';
 import { BASE_URL, AUTH_USERNAME, AUTH_PASSWORD } from '../config/config';
-import axios from "axios"
+import axios from 'axios';
 const MobileNumVerify = () => {
   const navigation = useNavigation();
   const icData = useSelector(state => state.ic.data);
-  const [num,setNum]=useState()
+  const [num, setNum] = useState();
   console.log('IC Slice Data:', icData);
 
-const handleOTP = async () => {
-  try {
-    const response = await axios.post(
-      `${BASE_URL}/api/login`,
-      {
-        ic_number: icData?.ic_number,
-        mobile: icData?.mobile,
-      },
-      {
-        auth: {
-          username: AUTH_USERNAME,
-          password: AUTH_PASSWORD,
-        },
-      },
-    );
-    console.log('OTP response:', response.data);
-    if (response.data?.status === true) {
-      Alert.alert('Success', 'OTP sent successfully', [
+  const handleOTP = async () => {
+    try {
+      const response = await axios.post(
+        `${BASE_URL}/api/login`,
         {
-          text: 'OK',
-          onPress: () => navigation.navigate('OtpPage'),
+          ic_number: icData?.ic_number,
+          mobile: icData?.mobile,
         },
-      ]);
-    } else {
-      Alert.alert('Error', response.data?.message || 'Failed to send OTP');
+        {
+          auth: {
+            username: AUTH_USERNAME,
+            password: AUTH_PASSWORD,
+          },
+        },
+      );
+      console.log('OTP response:', response.data);
+      if (response.data?.status === true) {
+        Alert.alert('Success', 'OTP sent successfully', [
+          {
+            text: 'OK',
+            onPress: () => navigation.navigate('OtpPage'),
+          },
+        ]);
+      } else {
+        Alert.alert('Error', response.data?.message || 'Failed to send OTP');
+      }
+    } catch (error) {
+      console.error('OTP request error:', error);
     }
-  } catch (error) {
-    console.error('OTP request error:', error);
-  }
-}
-
-
-
-
-
-
-
-
-
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Back Arrow */}
-      <TouchableOpacity
-        style={styles.backArrow}
-        onPress={() => navigation.goBack()}
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
       >
-        <Image
-          source={require('../assets/images/backarrow.png')}
-          style={styles.backIcon}
-          resizeMode="contain"
-        />
-      </TouchableOpacity>
+        <SafeAreaView style={styles.container}>
+          <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+            {/* Back Arrow */}
+            <TouchableOpacity
+              style={styles.backArrow}
+              onPress={() => navigation.goBack()}
+            >
+              <Image
+                source={require('../assets/images/backarrow.png')}
+                style={styles.backIcon}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
 
-      {/* Illustration */}
-      <Image
-        source={require('../assets/images/num.png')}
-        style={styles.image}
-        resizeMode="contain"
-      />
-
-      {/* Content */}
-      <View style={styles.contentContainer}>
-        <Text style={styles.heading}>Enter{'\n'}Mobile number</Text>
-        <Text style={styles.subText}>
-          Please enter the phone number we will send the OTP in this phone
-          number.
-        </Text>
-
-        <Text style={styles.label}>Phone Number</Text>
-
-        {/* Phone Input */}
-        <View style={styles.inputWrapper}>
-          <Text style={styles.prefix}>+60</Text>
-          {icData?.mobile ? (
-            <TextInput
-              value={icData.mobile}
-              style={styles.input}
-              editable={false}
+            {/* Illustration */}
+            <Image
+              source={require('../assets/images/num.png')}
+              style={styles.image}
+              resizeMode="contain"
             />
-          ) : (
-            <TextInput
-              placeholder="Enter your phonenumber"
-              placeholderTextColor="#B0B0B0"
-              keyboardType="number-pad"
-              inputMode="numeric"
-              maxLength={10}
-              style={styles.input}
-              value={num || ''}
-              onChangeText={text => setNum(text)}
-              editable={true}
-            />
-          )}
-        </View>
 
-        
-        {/* Get OTP Button */}
-        <TouchableOpacity style={styles.button} onPress={handleOTP}>
-          <Text style={styles.buttonText}>Get OTP</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+            {/* Content */}
+            <View style={styles.contentContainer}>
+              <Text style={styles.heading}>Enter{'\n'}Mobile number</Text>
+              <Text style={styles.subText}>
+                Please enter the phone number we will send the OTP in this phone
+                number.
+              </Text>
+
+              <Text style={styles.label}>Phone Number</Text>
+
+              {/* Phone Input */}
+              <View style={styles.inputWrapper}>
+                <Text style={styles.prefix}>+60</Text>
+                <TextInput
+                  placeholder="Enter your phonenumber"
+                  placeholderTextColor="#B0B0B0"
+                  keyboardType="number-pad"
+                  inputMode="numeric"
+                  maxLength={10}
+                  style={styles.input}
+                  value={num || icData?.mobile || ''}
+                  onChangeText={text => setNum(text)}
+                  editable={true}
+                />
+              </View>
+
+              {/* Get OTP Button */}
+              <TouchableOpacity style={styles.button} onPress={handleOTP}>
+                <Text style={styles.buttonText}>Get OTP</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
   );
 };
 
@@ -211,7 +208,7 @@ const styles = StyleSheet.create({
     fontSize: ms(14),
     fontFamily: 'Inter-SemiBold',
     color: '#6A00BF',
-   
+
     height: vs(18),
     paddingRight: s(60),
   },

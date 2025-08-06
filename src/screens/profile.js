@@ -57,18 +57,7 @@ const profile = () => {
             <Text style={styles.label}>Address: </Text>
             {user?.address}
           </Text>
-          <Text style={styles.info}>
-            <Text style={styles.label}>Post Code: </Text>
-            {user?.post_code}
-          </Text>
-          <Text style={styles.info}>
-            <Text style={styles.label}>State: </Text>
-            {user?.state}
-          </Text>
-          <Text style={styles.info}>
-            <Text style={styles.label}>Region ID: </Text>
-            {user?.region_id}
-          </Text>
+       
         </View>
         <TouchableOpacity
           style={styles.logoutButton}

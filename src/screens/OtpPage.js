@@ -39,6 +39,8 @@ const OtpPage = () => {
 
   const handleOTP = async () => {
     try {
+      // Reset OTP values before sending new OTP
+      setOtp(Array(6).fill(''));
       const response = await axios.post(
         `${BASE_URL}/api/login`,
         {

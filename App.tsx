@@ -49,7 +49,14 @@ export default function App() {
           <Stack.Screen name="VoteVerification" component={VoteVerification} />
           <Stack.Screen name="VotingSuccess" component={VotingSuccess} />
           <Stack.Screen name="profile" component={profile} />
-          <Stack.Screen name="ViewResultsPages" component={ViewResultsPages} />
+          <Stack.Screen
+            name="ViewResultsPages"
+            component={ViewResultsPages}
+            options={{
+              headerShown: true,
+              title: '',
+            }}
+          />
           <Stack.Screen
             name="ViewResults"
             component={ViewResults}

@@ -239,7 +239,7 @@ console.log(candidateList);
             }
           }}
         >
-          <Text style={styles.voteButtonText}>Conform your Vote</Text>
+          <Text style={styles.voteButtonText}>Confirm your Vote</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
