@@ -129,15 +129,7 @@ const Timer = () => {
       <Text style={styles.subtitle}>
         {hasStarted ? 'Voting Started' : 'Voting Yet to start'}
       </Text>
-      <Button
-        title="Next"
-        onPress={() =>
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'Home' }],
-          })
-        }
-      />
+      
     </View>
   );
 };

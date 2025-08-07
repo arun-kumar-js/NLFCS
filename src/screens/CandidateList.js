@@ -15,7 +15,7 @@ import { setSelectedCandidates } from '../slice/selectedCandidatesSlice';
 import axios from "axios"
 import { BASE_URL, AUTH_USERNAME, AUTH_PASSWORD } from '../config/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import Toast from 'react-native-toast-message';
 
 const CandidateList = ({ navigation, route }) => {
   const [electionId, setElectionId] = useState(route?.params?.electionId);
@@ -83,6 +83,7 @@ console.log(candidateList);
 
   return (
     <SafeAreaView style={styles.container}>
+      <Toast />
       <TouchableOpacity
         onPress={() => nav.goBack()}
         style={{ marginBottom: 10 }}
@@ -225,17 +226,36 @@ console.log(candidateList);
                   selectedCandidates.includes(candidate.id),
                 );
                 console.log(selectedData);
-                nav.navigate('VoteVerification', {
-                  selectedCandidates: selectedData,
-                  electionId: currentElection?.id,
+                Toast.show({
+                  type: 'success',
+                  text1: 'OTP Sent',
+                  text2: 'Check your phone for the verification code.',
+                  visibilityTime: 1000,
+                  position: 'top',
                 });
-                console.log('OTP sent:', data);
+
+                setTimeout(() => {
+                  nav.navigate('VoteVerification', {
+                    selectedCandidates: selectedData,
+                    electionId: currentElection?.id,
+                  });
+                }, 1000);
               } else {
-                alert(data.message || 'Failed to send OTP');
+                Toast.show({
+                  type: 'error',
+                  text1: data.message || 'Failed to send OTP',
+                  visibilityTime: 2000,
+                  position: 'top',
+                });
               }
             } catch (error) {
               console.error('API error:', error);
-              alert('Something went wrong while sending OTP.');
+              Toast.show({
+                type: 'error',
+                text1: 'Something went wrong while sending OTP.',
+                visibilityTime: 2000,
+                position: 'top',
+              });
             }
           }}
         >

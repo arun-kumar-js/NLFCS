@@ -145,6 +145,8 @@ console.log(cleanedExtractedIC);
         } else {
           console.log('❌ IC Mismatch');
           Alert.alert('Mismatch', 'IC number does not match. Please try again.');
+          setCapturedImage(null); // Show retake button by reverting to camera view
+          setExtractedNumbers([]);
         }
       } else {
         Alert.alert('Error', 'Failed to extract numbers from the image.');
@@ -320,9 +322,7 @@ console.log(cleanedExtractedIC);
             <TouchableOpacity style={styles.retakeButton} onPress={retakePhoto}>
               <Text style={styles.retakeButtonText}>Retake Photo</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-              <Text style={styles.submitButtonText}>Submit</Text>
-            </TouchableOpacity>
+          
           </View>
         </View>
       ) : (

@@ -15,7 +15,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { BASE_URL, AUTH_USERNAME, AUTH_PASSWORD } from '../config/config';
 import { useSelector } from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import Toast from 'react-native-toast-message';
 
 const VoteVerification = () => {
   const electionList = useSelector(state => state?.electionList?.data || []);
@@ -103,11 +103,19 @@ const onSubmit = async () => {
           routes: [{ name: 'VotingSuccess', params: { voteResponse: result } }],
         });
       } else {
-        alert(result.message || 'Something went wrong');
+        Toast.show({
+          type: 'error',
+          text1: result.message || 'Something went wrong',
+          visibilityTime: 2000,
+        });
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('Failed to submit vote.');
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to submit vote.',
+        visibilityTime: 2000,
+      });
     }
   };
 
@@ -173,6 +181,7 @@ const onSubmit = async () => {
           <Text style={styles.buttonText}>Submit</Text>
         </TouchableOpacity>
       </ScrollView>
+      <Toast />
     </SafeAreaView>
   );
 };

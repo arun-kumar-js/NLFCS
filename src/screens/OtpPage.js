@@ -19,6 +19,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSelector, useDispatch } from 'react-redux';
 import { userdata, setUserData } from '../redux/slice/userDataSlice';
 import { Alert } from 'react-native';
+import Toast from 'react-native-toast-message';
 const illustration = require('../assets/otp_illustration.png');
 
 const OtpPage = () => {
@@ -27,7 +28,8 @@ const OtpPage = () => {
   const otpInputs = Array(6).fill('');
   const [otp, setOtp] = React.useState(Array(6).fill(''));
   const inputRefs = useRef([]);
-   const icData = useSelector(state => state.ic.data);
+  const scrollViewRef = useRef(null);
+  const icData = useSelector(state => state.ic.data);
   const dispatch = useDispatch();
   const [timeLeft, setTimeLeft] = React.useState(90);
 
@@ -55,12 +57,20 @@ const OtpPage = () => {
         },
       );
       console.log('OTP response:', response.data);
-      if (response?.data?.status===true) {
-        Alert.alert('Success', response.data.message);
+      if (response?.data?.status === true) {
+        Toast.show({
+          type: ' success',
+          text1: response.data.message,
+          visibilityTime: 2000,
+          position: 'top',
+        });
       } else {
-        setTimeout(() => {
-          Alert.alert('Error', 'Unexpected response from server');
-        }, 100);
+        Toast.show({
+          type: 'error',
+          text1: 'Unexpected response from server',
+          visibilityTime: 2000,
+          position: 'top',
+        });
       }
     } catch (error) {
     
@@ -91,14 +101,22 @@ const OtpPage = () => {
         const savedUser = await AsyncStorage.getItem('user');
         console.warn('Saved user data:', savedUser);
 
-        Alert.alert('Success', 'OTP verified', [
-          {
-            text: 'OK',
-            onPress: () => navigation.navigate('Onboarding'),
-          }
-        ]);
+        Toast.show({
+          type: 'success',
+          text1: 'OTP verified',
+          visibilityTime: 2000,
+          position: 'top',
+        });
+        setTimeout(() => {
+          navigation.navigate('Onboarding');
+        }, 2000);
       } else {
-        Alert.alert('Failure', 'Invalid OTP')
+        Toast.show({
+          type: 'error',
+          text1: 'Invalid OTP',
+          visibilityTime: 2000,
+          position: 'top',
+        });
       }
     } catch (error) {
       console.log(error)
@@ -154,11 +172,15 @@ const OtpPage = () => {
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: '#fff' }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
     >
+      <Toast />
       <ScrollView
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        ref={scrollViewRef}
+        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
       >
         <SafeAreaView>
           {/* Back Arrow */}

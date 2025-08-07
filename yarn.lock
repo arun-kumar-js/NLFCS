@@ -2310,9 +2310,9 @@
     reselect "^5.1.0"
 
 "@shopify/react-native-skia@*", "@shopify/react-native-skia@>=1.2.3":
-  version "2.2.0"
-  resolved "https://registry.npmjs.org/@shopify/react-native-skia/-/react-native-skia-2.2.0.tgz"
-  integrity sha512-RHbjFShI/eoc5VeDDDDw9INbgdTxVbcOu40sUVebITuBmoO/AaEBIOtag9Ae7KddYKSOIA7tYrgolOddA6wZ7w==
+  version "2.2.2"
+  resolved "https://registry.npmjs.org/@shopify/react-native-skia/-/react-native-skia-2.2.2.tgz"
+  integrity sha512-5cAmTLdTi/ihH5iyyfBefWD7xhqPhMBBsy/za9+WrF4vXwWpsRXABQJbiz88rDpMsN9GCtEzI4p9pEP3fHRRGQ==
   dependencies:
     canvaskit-wasm "0.40.0"
     react-reconciler "0.31.0"
@@ -3507,6 +3507,11 @@ clone@^1.0.2:
   version "1.0.4"
   resolved "https://registry.npmjs.org/clone/-/clone-1.0.4.tgz"
   integrity sha512-JQHZ2QMW6l3aH/j6xCqQThY/9OH4D/9ls34cgkUBiEeocRTU04tHfKPBsUK1PqZCUQM7GiA0IIXJSuXHI64Kbg==
+
+clsx@^2.1.1:
+  version "2.1.1"
+  resolved "https://registry.npmjs.org/clsx/-/clsx-2.1.1.tgz"
+  integrity sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==
 
 co@^4.6.0:
   version "4.6.0"
@@ -7141,6 +7146,13 @@ react-devtools-core@^6.1.1:
     shell-quote "^1.6.1"
     ws "^7"
 
+"react-dom@^18 || ^19", react-dom@^19.1.0:
+  version "19.1.0"
+  resolved "https://registry.npmjs.org/react-dom/-/react-dom-19.1.0.tgz"
+  integrity sha512-Xs1hdnE+DyKgeHJeJznQmYMIBG3TKIHJJT95Q58nHLSrElKlGQqDTR2HQ9fx5CN/Gk6Vh/kupBTDLU11/nDk/g==
+  dependencies:
+    scheduler "^0.26.0"
+
 react-fast-compare@^3.2.2:
   version "3.2.2"
   resolved "https://registry.npmjs.org/react-fast-compare/-/react-fast-compare-3.2.2.tgz"
@@ -7316,6 +7328,11 @@ react-native-tab-view@^4.1.2:
   dependencies:
     use-latest-callback "^0.2.4"
 
+react-native-toast-message@^2.3.3:
+  version "2.3.3"
+  resolved "https://registry.npmjs.org/react-native-toast-message/-/react-native-toast-message-2.3.3.tgz"
+  integrity sha512-4IIUHwUPvKHu4gjD0Vj2aGQzqPATiblL1ey8tOqsxOWRPGGu52iIbL8M/mCz4uyqecvPdIcMY38AfwRuUADfQQ==
+
 react-native-vector-icons@^10.3.0:
   version "10.3.0"
   resolved "https://registry.npmjs.org/react-native-vector-icons/-/react-native-vector-icons-10.3.0.tgz"
@@ -7398,7 +7415,14 @@ react-test-renderer@19.1.0:
     react-is "^19.1.0"
     scheduler "^0.26.0"
 
-react@*, "react@^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react@^16.9.0 || ^17.0.0 || ^18 || ^19", "react@^18.0 || ^19", react@^19.0.0, react@^19.1.0, "react@> 16.7.0", "react@>= 18.2.0", react@>=16.3.0, react@>=16.8, react@>=16.8.1, react@>=17.0.0, react@>=18.0, react@>=18.1.0, react@>=19.0, react@19.1.0:
+react-toastify@^11.0.5:
+  version "11.0.5"
+  resolved "https://registry.npmjs.org/react-toastify/-/react-toastify-11.0.5.tgz"
+  integrity sha512-EpqHBGvnSTtHYhCPLxML05NLY2ZX0JURbAdNYa6BUkk+amz4wbKBQvoKQAB0ardvSarUBuY4Q4s1sluAzZwkmA==
+  dependencies:
+    clsx "^2.1.1"
+
+react@*, "react@^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0", "react@^16.9.0 || ^17.0.0 || ^18 || ^19", "react@^18 || ^19", "react@^18.0 || ^19", react@^19.0.0, react@^19.1.0, "react@> 16.7.0", "react@>= 18.2.0", react@>=16.3.0, react@>=16.8, react@>=16.8.1, react@>=17.0.0, react@>=18.0, react@>=18.1.0, react@>=19.0, react@19.1.0:
   version "19.1.0"
   resolved "https://registry.npmjs.org/react/-/react-19.1.0.tgz"
   integrity sha512-FS+XFBNvn3GTAWq26joslQgWNoFu08F4kl0J4CgdNKADkdSGXQyTCnKteIAJy96Br6YbpEU1LSzV5dYtjMkMDg==

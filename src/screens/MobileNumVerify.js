@@ -20,6 +20,8 @@ import {
 } from 'react-native';
 import { BASE_URL, AUTH_USERNAME, AUTH_PASSWORD } from '../config/config';
 import axios from 'axios';
+import Toast from 'react-native-toast-message';
+
 const MobileNumVerify = () => {
   const navigation = useNavigation();
   const icData = useSelector(state => state.ic.data);
@@ -43,14 +45,20 @@ const MobileNumVerify = () => {
       );
       console.log('OTP response:', response.data);
       if (response.data?.status === true) {
-        Alert.alert('Success', 'OTP sent successfully', [
-          {
-            text: 'OK',
-            onPress: () => navigation.navigate('OtpPage'),
-          },
-        ]);
+        Toast.show({
+          type: 'success',
+          text1: 'OTP sent successfully',
+          visibilityTime: 2000,
+        });
+
+        setTimeout(() => {
+          navigation.navigate('OtpPage');
+        }, 2000);
       } else {
-        Alert.alert('Error', response.data?.message || 'Failed to send OTP');
+        Toast.show({
+          type: 'error',
+          text1: response.data?.message || 'Failed to send OTP',
+        });
       }
     } catch (error) {
       console.error('OTP request error:', error);
@@ -116,6 +124,7 @@ const MobileNumVerify = () => {
               </TouchableOpacity>
             </View>
           </ScrollView>
+          <Toast />
         </SafeAreaView>
       </KeyboardAvoidingView>
     </TouchableWithoutFeedback>

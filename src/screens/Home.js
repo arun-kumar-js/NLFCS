@@ -11,6 +11,7 @@ import {
   Image,
   TouchableOpacity,
   ScrollView,
+  RefreshControl,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,6 +27,7 @@ const Home = () => {
   const [voteResult, setVoteResult] = useState(null);
   const [totalVotesByElection, setTotalVotesByElection] = useState({});
   const [remainingTimes, setRemainingTimes] = useState({});
+  const [refreshing, setRefreshing] = useState(false);
   // Dynamic countdown for each election
   useEffect(() => {
     const timer = setInterval(() => {
@@ -68,9 +70,9 @@ const Home = () => {
     electionList();
   }, []);
 
-  console.log('otpResponse', otpResponse);
-  console.log(otpResponse?.[0]?.id);
-  console.log(otpResponse?.[0]?.region_id);
+  // console.log('otpResponse', otpResponse);
+  // console.log(otpResponse?.[0]?.id);
+  // console.log(otpResponse?.[0]?.region_id);
   const electionListResult = useSelector(
     state => state?.electionList?.data || [],
   );
@@ -113,6 +115,12 @@ const Home = () => {
     } catch (error) {
       console.error('Error fetching election list:', error);
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await electionList();
+    setRefreshing(false);
   };
 
   const generateChartData = async (electionId, voteCount) => {
@@ -163,7 +171,12 @@ const Home = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.profileBox}>
@@ -279,7 +292,7 @@ const Home = () => {
               </Text>
             </View>
             <TouchableOpacity
-                style={[styles.voteBtn, { fontSize: 10, width: 70 }]}
+                style={[styles.voteBtn, { fontSize: 10, width: s(75) }]}
                 disabled={new Date(election.end_date) < new Date() || election.vote_status === 'voted'}
                 onPress={() => {
                   if (
@@ -458,7 +471,7 @@ const Home = () => {
   );
 };
 
-export default Home;
+export default Home; 
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: s(20), backgroundColor: '#fff' },
@@ -468,15 +481,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#ccc',
-    borderRadius: 17,
-    padding: 10,
+    borderRadius: ms(17),
+    padding: s(10),
     // backgroundColor: '#fff',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: vs(2) },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: s(4),
     elevation: 3,
-    height: 90,
+    height: vs(90),
   },
   profileBox: { flexDirection: 'row', alignItems: 'center' },
   avatar: {
@@ -528,21 +541,20 @@ const styles = StyleSheet.create({
     borderRadius: ms(16),
     shadowColor: '#000',
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: s(4),
     marginBottom: vs(5),
     width: s(310),
     height: vs(250),
   },
   candidatesRow: {
     flexDirection: 'row',
-
     margin: vs(10),
   },
   candidate: {
     width: s(35),
     height: vs(30),
     borderRadius: ms(17),
-    borderWidth: 2,
+    borderWidth: s(2),
     borderColor: '#fff',
     marginLeft: vs(10),
   },
@@ -557,7 +569,8 @@ const styles = StyleSheet.create({
   label: {
     color: '#fff',
     marginTop: vs(2),
-    marginLeft: vs(10),
+    marginLeft: s(10),
+    marginBottom: vs(5)
   },
   date: {
     color: '#fff',
@@ -574,20 +587,22 @@ const styles = StyleSheet.create({
   region: { color: '#fff', marginLeft: vs(10) },
   timerBox: {
     backgroundColor: '#222',
-    width: 210,
+    width: s(190),
     borderRadius: ms(10),
     paddingVertical: vs(10),
     alignItems: 'center',
-    marginRight: 20,
+    marginRight: s(18),
+    textAlign: "center",
+    
   },
-  timerText: { color: '#fff' },
+  timerText: { color: '#fff',paddingTop:s(1.5) },
   voteBtn: {
     backgroundColor: '#fff',
     borderRadius: ms(10),
     paddingVertical: vs(10),
     alignItems: 'center',
   },
-  voteText: { color: '#000', fontWeight: '600' },
+  voteText: { color: '#000', fontWeight: '600',padding:s(1) },
   chart: {
     alignItems: 'center',
     position: 'relative',
@@ -598,8 +613,8 @@ const styles = StyleSheet.create({
   },
   registerImage: {
     position: 'absolute',
-    top: 20,
-    right: 0,
+    top: vs(20),
+    right: s(0),
     width: s(121),
     height: vs(25),
   },
